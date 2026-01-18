@@ -2,12 +2,10 @@ import React, { useState } from "react";
 import {
   View,
   StyleSheet,
-  Pressable,
   ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Image } from "expo-image";
-import * as WebBrowser from "expo-web-browser";
 import * as Haptics from "expo-haptics";
 
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
@@ -17,8 +15,6 @@ import { Button } from "@/components/Button";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { Spacing, BorderRadius } from "@/constants/theme";
-
-const WEBSITE_URL = "https://onetimeonetime.com";
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
@@ -50,14 +46,6 @@ export default function LoginScreen() {
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
-  };
-
-  const handleForgotPassword = async () => {
-    await WebBrowser.openBrowserAsync(`${WEBSITE_URL}/forgot-password`);
-  };
-
-  const handleCreateAccount = async () => {
-    await WebBrowser.openBrowserAsync(`${WEBSITE_URL}/signup`);
   };
 
   return (
@@ -132,35 +120,14 @@ export default function LoginScreen() {
             "Sign In"
           )}
         </Button>
-
-        <View style={styles.linksContainer}>
-          <Pressable
-            onPress={handleForgotPassword}
-            style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
-            testID="button-forgot-password"
-          >
-            <ThemedText style={[styles.link, { color: theme.accent }]}>
-              Forgot Password?
-            </ThemedText>
-          </Pressable>
-
-          <View style={[styles.divider, { backgroundColor: theme.border }]} />
-
-          <Pressable
-            onPress={handleCreateAccount}
-            style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
-            testID="button-create-account"
-          >
-            <ThemedText style={[styles.link, { color: theme.accent }]}>
-              Create Account
-            </ThemedText>
-          </Pressable>
-        </View>
       </View>
 
       <View style={styles.footer}>
         <ThemedText style={[styles.footerText, { color: theme.textSecondary }]}>
-          Use your onetimeonetime.com credentials
+          Create and manage your account at
+        </ThemedText>
+        <ThemedText style={[styles.websiteText, { color: theme.accent }]}>
+          onetimeonetime.com
         </ThemedText>
       </View>
     </KeyboardAwareScrollViewCompat>
@@ -202,26 +169,17 @@ const styles = StyleSheet.create({
   loginButton: {
     marginTop: Spacing.sm,
   },
-  linksContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: Spacing["2xl"],
-  },
-  link: {
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  divider: {
-    width: 1,
-    height: 16,
-    marginHorizontal: Spacing.lg,
-  },
   footer: {
     alignItems: "center",
     paddingTop: Spacing["2xl"],
   },
   footerText: {
     fontSize: 13,
+    textAlign: "center",
+  },
+  websiteText: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginTop: Spacing.xs,
   },
 });
