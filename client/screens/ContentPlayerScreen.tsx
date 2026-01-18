@@ -511,10 +511,13 @@ export default function ContentPlayerScreen() {
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={(e) => {
+          onScroll={(e) => {
             const index = Math.round(e.nativeEvent.contentOffset.x / windowWidth);
-            setCurrentPageIndex(index);
+            if (index !== currentPageIndex && index >= 0 && index < documentPages.length) {
+              setCurrentPageIndex(index);
+            }
           }}
+          scrollEventThrottle={16}
           getItemLayout={(_, index) => ({
             length: windowWidth,
             offset: windowWidth * index,
