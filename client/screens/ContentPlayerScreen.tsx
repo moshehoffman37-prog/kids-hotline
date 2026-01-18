@@ -276,11 +276,28 @@ export default function ContentPlayerScreen() {
       );
     }
 
+    const hasThumbnail = item.thumbnailUrl;
+    const needsAuth = item.thumbnailRequiresAuth && authToken;
+    const imageSource = hasThumbnail
+      ? {
+          uri: item.thumbnailUrl,
+          headers: needsAuth ? { Authorization: `Bearer ${authToken}` } : undefined,
+        }
+      : null;
+
     return (
       <View style={styles.audioContainer}>
-        <View style={[styles.audioThumbnailPlaceholder, { backgroundColor: theme.backgroundSecondary }]}>
-          <Feather name="headphones" size={64} color={theme.accent} />
-        </View>
+        {imageSource ? (
+          <Image
+            source={imageSource}
+            style={styles.audioThumbnail}
+            contentFit="cover"
+          />
+        ) : (
+          <View style={[styles.audioThumbnailPlaceholder, { backgroundColor: theme.backgroundSecondary }]}>
+            <Feather name="headphones" size={64} color={theme.accent} />
+          </View>
+        )}
         <View style={styles.audioControls}>
           <Pressable
             onPress={handleAudioPlayPause}
@@ -551,6 +568,13 @@ const styles = StyleSheet.create({
   audioContainer: {
     padding: Spacing.xl,
     alignItems: "center",
+  },
+  audioThumbnail: {
+    width: SCREEN_WIDTH - Spacing.xl * 2,
+    height: SCREEN_WIDTH - Spacing.xl * 2,
+    maxHeight: 300,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.xl,
   },
   audioThumbnailPlaceholder: {
     width: SCREEN_WIDTH - Spacing.xl * 2,
