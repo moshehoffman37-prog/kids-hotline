@@ -51,9 +51,9 @@ All requests after login include `Authorization: Bearer <token>` header.
    - Grid of content cards with thumbnails
 
 3. **Content Player** - Tapping a card opens:
-   - Video: WebView with Bunny Stream embed URL
+   - Video: Native HLS playback via expo-video (no browser required)
    - Audio: Native audio player with play/pause and progress bar
-   - Document: WebView displaying document pages
+   - Document: Image viewer with pinch-to-zoom and 2-finger pan
 
 ## Project Structure
 
@@ -82,9 +82,9 @@ assets/images/
 
 | Type | Source | Player |
 |------|--------|--------|
-| video | embedUrl from API | WebView (Bunny Stream) |
+| video | embedUrl from API | Native HLS playback via expo-video (no browser required) |
 | audio | /api/audio-files/:id/stream | expo-av Audio player |
-| document | /api/documents/:id/pages | WebView |
+| document | /api/documents/:id/pages | Image viewer with pinch-to-zoom |
 
 ## User Preferences
 
