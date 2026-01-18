@@ -98,7 +98,7 @@ export default function HomeScreen() {
 
   const handleUpdateSubscription = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Linking.openURL("https://onetimeonetime.com/account");
+    Linking.openURL("https://onetimeonetime.com");
   };
 
   if (isLoading) {
