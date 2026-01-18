@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   StyleSheet,
@@ -6,6 +6,7 @@ import {
   Pressable,
   Dimensions,
   ActivityIndicator,
+  GestureResponderEvent,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -44,6 +45,11 @@ export default function ContentPlayerScreen() {
   const [videoEmbedUrl, setVideoEmbedUrl] = useState<string | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
   const [audioStreamUrl, setAudioStreamUrl] = useState<string | null>(null);
+  const [playbackRate, setPlaybackRate] = useState(1.0);
+  const progressBarRef = useRef<View>(null);
+  const [progressBarWidth, setProgressBarWidth] = useState(0);
+
+  const playbackSpeeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
 
   useEffect(() => {
     AsyncStorage.getItem(AUTH_TOKEN_KEY).then(setAuthToken);
@@ -113,7 +119,7 @@ export default function ContentPlayerScreen() {
       try {
         const { sound: newSound } = await Audio.Sound.createAsync(
           { uri: audioStreamUrl },
-          { shouldPlay: true },
+          { shouldPlay: true, rate: playbackRate, shouldCorrectPitch: true },
           onAudioStatusUpdate
         );
         setSound(newSound);
@@ -149,6 +155,25 @@ export default function ContentPlayerScreen() {
     const mins = Math.floor(totalSeconds / 60);
     const secs = totalSeconds % 60;
     return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const handleSeek = async (event: GestureResponderEvent) => {
+    if (!sound || audioDuration === 0 || progressBarWidth === 0) return;
+    
+    const { locationX } = event.nativeEvent;
+    const percentage = Math.max(0, Math.min(1, locationX / progressBarWidth));
+    const newPosition = percentage * audioDuration;
+    
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    await sound.setPositionAsync(newPosition);
+  };
+
+  const handleSpeedChange = async (speed: number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setPlaybackRate(speed);
+    if (sound) {
+      await sound.setRateAsync(speed, true);
+    }
   };
 
   const renderVideoPlayer = () => {
@@ -222,33 +247,78 @@ export default function ContentPlayerScreen() {
               color={theme.buttonText}
             />
           </Pressable>
-        <View style={styles.progressContainer}>
-          <View
-            style={[styles.progressBar, { backgroundColor: theme.backgroundSecondary }]}
-          >
-            <View
-              style={[
-                styles.progressFill,
-                {
-                  backgroundColor: theme.accent,
-                  width: audioDuration > 0
-                    ? `${(audioPosition / audioDuration) * 100}%`
-                    : "0%",
-                },
-              ]}
-            />
+          <View style={styles.progressContainer}>
+            <Pressable
+              ref={progressBarRef}
+              onLayout={(e) => setProgressBarWidth(e.nativeEvent.layout.width)}
+              onPress={handleSeek}
+              style={[styles.progressBarTouchable]}
+            >
+              <View style={[styles.progressBar, { backgroundColor: theme.backgroundSecondary }]}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    {
+                      backgroundColor: theme.accent,
+                      width: audioDuration > 0
+                        ? `${(audioPosition / audioDuration) * 100}%`
+                        : "0%",
+                    },
+                  ]}
+                />
+                <View
+                  style={[
+                    styles.progressThumb,
+                    {
+                      backgroundColor: theme.accent,
+                      left: audioDuration > 0
+                        ? `${(audioPosition / audioDuration) * 100}%`
+                        : "0%",
+                    },
+                  ]}
+                />
+              </View>
+            </Pressable>
+            <View style={styles.timeContainer}>
+              <ThemedText style={[styles.timeText, { color: theme.textSecondary }]}>
+                {formatTime(audioPosition)}
+              </ThemedText>
+              <ThemedText style={[styles.timeText, { color: theme.textSecondary }]}>
+                {formatTime(audioDuration)}
+              </ThemedText>
+            </View>
           </View>
-          <View style={styles.timeContainer}>
-            <ThemedText style={[styles.timeText, { color: theme.textSecondary }]}>
-              {formatTime(audioPosition)}
+          <View style={styles.speedControls}>
+            <ThemedText style={[styles.speedLabel, { color: theme.textSecondary }]}>
+              Speed
             </ThemedText>
-            <ThemedText style={[styles.timeText, { color: theme.textSecondary }]}>
-              {formatTime(audioDuration)}
-            </ThemedText>
+            <View style={styles.speedButtons}>
+              {playbackSpeeds.map((speed) => (
+                <Pressable
+                  key={speed}
+                  onPress={() => handleSpeedChange(speed)}
+                  style={[
+                    styles.speedButton,
+                    {
+                      backgroundColor: playbackRate === speed ? theme.accent : theme.backgroundSecondary,
+                      borderColor: playbackRate === speed ? theme.accent : theme.border,
+                    },
+                  ]}
+                >
+                  <ThemedText
+                    style={[
+                      styles.speedButtonText,
+                      { color: playbackRate === speed ? theme.buttonText : theme.text },
+                    ]}
+                  >
+                    {speed}x
+                  </ThemedText>
+                </Pressable>
+              ))}
+            </View>
           </View>
         </View>
       </View>
-    </View>
     );
   };
 
@@ -461,22 +531,60 @@ const styles = StyleSheet.create({
   progressContainer: {
     width: "100%",
   },
+  progressBarTouchable: {
+    paddingVertical: Spacing.md,
+  },
   progressBar: {
     height: 6,
     borderRadius: 3,
-    overflow: "hidden",
+    overflow: "visible",
+    position: "relative",
   },
   progressFill: {
     height: "100%",
     borderRadius: 3,
+    position: "absolute",
+    left: 0,
+    top: 0,
+  },
+  progressThumb: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    position: "absolute",
+    top: -5,
+    marginLeft: -8,
   },
   timeContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: Spacing.sm,
+    marginTop: Spacing.xs,
   },
   timeText: {
     fontSize: 12,
+  },
+  speedControls: {
+    marginTop: Spacing.xl,
+    width: "100%",
+    alignItems: "center",
+  },
+  speedLabel: {
+    fontSize: 13,
+    marginBottom: Spacing.sm,
+  },
+  speedButtons: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+  },
+  speedButton: {
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+  },
+  speedButtonText: {
+    fontSize: 13,
+    fontWeight: "500",
   },
   documentScrollView: {
     flex: 1,
