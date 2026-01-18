@@ -14,6 +14,7 @@ import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Image } from "expo-image";
 import { Audio, AVPlaybackStatus } from "expo-av";
 import { WebView } from "react-native-webview";
+import * as WebBrowser from "expo-web-browser";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -260,31 +261,41 @@ export default function ContentPlayerScreen() {
       );
     }
 
+    const openInBrowser = async () => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      await WebBrowser.openBrowserAsync(videoEmbedUrl);
+    };
+
+    const hasThumbnail = item.thumbnailUrl;
+    const thumbnailSource = hasThumbnail && item.thumbnailUrl
+      ? {
+          uri: item.thumbnailUrl,
+          headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
+        }
+      : null;
+
     return (
       <View style={styles.videoContainer}>
-        <WebView
-          source={{ uri: videoEmbedUrl }}
-          style={styles.webview}
-          allowsFullscreenVideo
-          allowsInlineMediaPlayback
-          mediaPlaybackRequiresUserAction={false}
-          javaScriptEnabled
-          domStorageEnabled
-          bounces={false}
-          scrollEnabled={false}
-          originWhitelist={["*"]}
-          mixedContentMode="always"
-          setSupportMultipleWindows={false}
-          onError={(syntheticEvent) => {
-            const { nativeEvent } = syntheticEvent;
-            console.log("WebView error:", nativeEvent);
-            setVideoError("Failed to load video player");
-          }}
-          onHttpError={(syntheticEvent) => {
-            const { nativeEvent } = syntheticEvent;
-            console.log("WebView HTTP error:", nativeEvent.statusCode);
-          }}
-        />
+        {thumbnailSource ? (
+          <Image
+            source={thumbnailSource}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+          />
+        ) : null}
+        <View style={[StyleSheet.absoluteFill, styles.videoOverlay]} />
+        <Pressable
+          onPress={openInBrowser}
+          style={({ pressed }) => [
+            styles.playVideoButton,
+            { backgroundColor: theme.accent, opacity: pressed ? 0.8 : 1 },
+          ]}
+        >
+          <Feather name="play" size={32} color={theme.buttonText} />
+          <ThemedText style={[styles.playVideoText, { color: theme.buttonText }]}>
+            Play Video
+          </ThemedText>
+        </Pressable>
       </View>
     );
   };
@@ -561,6 +572,21 @@ const styles = StyleSheet.create({
   videoLoading: {
     justifyContent: "center",
     alignItems: "center",
+  },
+  videoOverlay: {
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
+  },
+  playVideoButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xl,
+    borderRadius: BorderRadius.lg,
+    gap: Spacing.sm,
+  },
+  playVideoText: {
+    fontSize: 18,
+    fontWeight: "600",
   },
   webview: {
     flex: 1,
