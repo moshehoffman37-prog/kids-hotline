@@ -1,8 +1,9 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useState, useMemo } from "react";
 import {
   View,
   StyleSheet,
   FlatList,
+  ScrollView,
   RefreshControl,
   Pressable,
   ActivityIndicator,
@@ -23,72 +24,45 @@ import { Spacing, BorderRadius } from "@/constants/theme";
 import * as api from "@/lib/api";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
-function CategoryRow({
-  section,
-  onItemPress,
-}: {
-  section: api.CategorySection;
-  onItemPress: (item: api.ContentItem) => void;
-}) {
-  const { theme } = useTheme();
-
-  const getTypeIcon = (): keyof typeof Feather.glyphMap => {
-    switch (section.type) {
-      case "video":
-        return "video";
-      case "audio":
-        return "headphones";
-      case "document":
-        return "file-text";
-      default:
-        return "folder";
-    }
-  };
-
-  return (
-    <View style={styles.categorySection}>
-      <View style={styles.categoryHeader}>
-        <Feather
-          name={getTypeIcon()}
-          size={18}
-          color={theme.accent}
-          style={styles.categoryIcon}
-        />
-        <ThemedText style={[styles.categoryTitle, { color: theme.text }]}>
-          {section.name}
-        </ThemedText>
-        <ThemedText style={[styles.itemCount, { color: theme.textSecondary }]}>
-          {section.items.length}
-        </ThemedText>
-      </View>
-      <FlatList
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        data={section.items}
-        keyExtractor={(item) => `${section.id}-${item.id}`}
-        renderItem={({ item }) => (
-          <ContentCard
-            item={item}
-            onPress={() => onItemPress(item)}
-            size="small"
-          />
-        )}
-        contentContainerStyle={styles.categoryItems}
-      />
-    </View>
-  );
-}
-
 export default function HomeScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { logout } = useAuth();
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const { data: sections, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["content-by-categories"],
     queryFn: api.getContentByCategories,
   });
+
+  const allItems = useMemo(() => {
+    if (!sections) return [];
+    return sections.flatMap((s) => s.items);
+  }, [sections]);
+
+  const recentItems = useMemo(() => {
+    return [...allItems]
+      .sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+      })
+      .slice(0, 10);
+  }, [allItems]);
+
+  const categories = useMemo(() => {
+    if (!sections) return [];
+    return sections
+      .filter((s) => s.type !== "document")
+      .map((s) => ({ id: s.id, name: s.name }));
+  }, [sections]);
+
+  const filteredItems = useMemo(() => {
+    if (!selectedCategory || !sections) return [];
+    const section = sections.find((s) => s.id === selectedCategory);
+    return section ? section.items : [];
+  }, [selectedCategory, sections]);
 
   const handleContentPress = useCallback(
     (item: api.ContentItem) => {
@@ -96,6 +70,11 @@ export default function HomeScreen() {
     },
     [navigation]
   );
+
+  const handleCategoryPress = (categoryId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSelectedCategory(categoryId === selectedCategory ? null : categoryId);
+  };
 
   const handleLogout = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -145,14 +124,10 @@ export default function HomeScreen() {
         </Pressable>
       </View>
 
-      <FlatList
-        data={sections}
-        keyExtractor={(section) => section.id}
-        renderItem={({ item: section }) => (
-          <CategoryRow section={section} onItemPress={handleContentPress} />
-        )}
+      <ScrollView
+        style={styles.content}
         contentContainerStyle={[
-          styles.contentList,
+          styles.contentContainer,
           { paddingBottom: insets.bottom + Spacing.xl },
         ]}
         refreshControl={
@@ -162,15 +137,109 @@ export default function HomeScreen() {
             tintColor={theme.accent}
           />
         }
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Feather name="inbox" size={48} color={theme.textSecondary} />
-            <ThemedText style={[styles.emptyText, { color: theme.textSecondary }]}>
-              No content available
+      >
+        <View style={styles.recentSection}>
+          <View style={styles.sectionHeader}>
+            <Feather name="clock" size={18} color={theme.accent} style={styles.sectionIcon} />
+            <ThemedText style={[styles.sectionTitle, { color: theme.text }]}>
+              Recent
             </ThemedText>
           </View>
-        }
-      />
+          {recentItems.length > 0 ? (
+            <FlatList
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              data={recentItems}
+              keyExtractor={(item) => `recent-${item.id}`}
+              renderItem={({ item }) => (
+                <ContentCard
+                  item={item}
+                  onPress={() => handleContentPress(item)}
+                  size="small"
+                />
+              )}
+              contentContainerStyle={styles.recentItems}
+            />
+          ) : (
+            <View style={styles.emptyRecent}>
+              <ThemedText style={[styles.emptyText, { color: theme.textSecondary }]}>
+                No recent content
+              </ThemedText>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.categoriesSection}>
+          <View style={styles.sectionHeader}>
+            <Feather name="folder" size={18} color={theme.accent} style={styles.sectionIcon} />
+            <ThemedText style={[styles.sectionTitle, { color: theme.text }]}>
+              Categories
+            </ThemedText>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoryChips}
+          >
+            {categories.map((category) => {
+              const isSelected = category.id === selectedCategory;
+              return (
+                <Pressable
+                  key={category.id}
+                  onPress={() => handleCategoryPress(category.id)}
+                  style={[
+                    styles.categoryChip,
+                    {
+                      backgroundColor: isSelected ? theme.accent : theme.backgroundSecondary,
+                      borderColor: isSelected ? theme.accent : theme.border,
+                    },
+                  ]}
+                >
+                  <ThemedText
+                    style={[
+                      styles.categoryChipText,
+                      { color: isSelected ? theme.buttonText : theme.text },
+                    ]}
+                  >
+                    {category.name}
+                  </ThemedText>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {selectedCategory ? (
+          <View style={styles.filteredContent}>
+            <View style={styles.contentGrid}>
+              {filteredItems.map((item) => (
+                <View key={item.id} style={styles.gridItem}>
+                  <ContentCard
+                    item={item}
+                    onPress={() => handleContentPress(item)}
+                    size="medium"
+                  />
+                </View>
+              ))}
+            </View>
+            {filteredItems.length === 0 ? (
+              <View style={styles.emptyCategory}>
+                <Feather name="inbox" size={32} color={theme.textSecondary} />
+                <ThemedText style={[styles.emptyText, { color: theme.textSecondary }]}>
+                  No content in this category
+                </ThemedText>
+              </View>
+            ) : null}
+          </View>
+        ) : (
+          <View style={styles.selectCategoryHint}>
+            <Feather name="arrow-up" size={24} color={theme.textSecondary} />
+            <ThemedText style={[styles.hintText, { color: theme.textSecondary }]}>
+              Select a category to browse content
+            </ThemedText>
+          </View>
+        )}
+      </ScrollView>
     </View>
   );
 }
@@ -210,40 +279,81 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginLeft: Spacing.xs,
   },
-  contentList: {
+  content: {
+    flex: 1,
+  },
+  contentContainer: {
+    flexGrow: 1,
+  },
+  recentSection: {
     paddingTop: Spacing.lg,
+    marginBottom: Spacing.lg,
   },
-  categorySection: {
-    marginBottom: Spacing.xl,
-  },
-  categoryHeader: {
+  sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: Spacing.lg,
     marginBottom: Spacing.md,
   },
-  categoryIcon: {
+  sectionIcon: {
     marginRight: Spacing.sm,
   },
-  categoryTitle: {
+  sectionTitle: {
     fontSize: 18,
     fontWeight: "600",
-    flex: 1,
   },
-  itemCount: {
-    fontSize: 14,
-  },
-  categoryItems: {
+  recentItems: {
     paddingHorizontal: Spacing.lg,
   },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
+  emptyRecent: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.xl,
     alignItems: "center",
-    paddingVertical: Spacing["5xl"],
+  },
+  categoriesSection: {
+    marginBottom: Spacing.lg,
+  },
+  categoryChips: {
+    paddingHorizontal: Spacing.lg,
+    gap: Spacing.sm,
+  },
+  categoryChip: {
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    marginRight: Spacing.sm,
+  },
+  categoryChipText: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  filteredContent: {
+    paddingHorizontal: Spacing.lg,
+  },
+  contentGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginHorizontal: -Spacing.xs,
+  },
+  gridItem: {
+    width: "50%",
+    paddingHorizontal: Spacing.xs,
+  },
+  emptyCategory: {
+    paddingVertical: Spacing["3xl"],
+    alignItems: "center",
+  },
+  selectCategoryHint: {
+    paddingVertical: Spacing["3xl"],
+    alignItems: "center",
+  },
+  hintText: {
+    marginTop: Spacing.md,
+    fontSize: 15,
   },
   emptyText: {
-    marginTop: Spacing.md,
-    fontSize: 16,
+    marginTop: Spacing.sm,
+    fontSize: 14,
   },
 });
