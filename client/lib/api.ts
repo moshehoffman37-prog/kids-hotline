@@ -248,65 +248,37 @@ export async function getContentByCategories(): Promise<CategorySection[]> {
   const sections: CategorySection[] = [];
   const categoryMap = new Map(videoCategories.map((c) => [c.id, c.name]));
   
-  const videos = allContent.filter((item) => item.mediaType !== "audio");
-  const audioFiles = allContent.filter((item) => item.mediaType === "audio");
-  
-  const videosByCategory = new Map<string, VideoItem[]>();
-  videos.forEach((video) => {
-    const catId = video.categoryId || "uncategorized";
-    if (!videosByCategory.has(catId)) {
-      videosByCategory.set(catId, []);
+  const contentByCategory = new Map<string, VideoItem[]>();
+  allContent.forEach((item) => {
+    const catId = item.categoryId || "uncategorized";
+    if (!contentByCategory.has(catId)) {
+      contentByCategory.set(catId, []);
     }
-    videosByCategory.get(catId)!.push(video);
+    contentByCategory.get(catId)!.push(item);
   });
 
-  videosByCategory.forEach((categoryVideos, categoryId) => {
+  contentByCategory.forEach((categoryItems, categoryId) => {
     const categoryName = categoryMap.get(categoryId) || formatCategoryName(categoryId);
     sections.push({
-      id: `video-${categoryId}`,
+      id: `content-${categoryId}`,
       name: categoryName,
       type: "video",
-      items: categoryVideos.map((v) => {
-        const thumb = getVideoThumbnailUrl(v);
+      items: categoryItems.map((item) => {
+        const isAudio = item.mediaType === "audio";
+        const thumb = getVideoThumbnailUrl(item);
         return {
-          id: v.id,
-          title: v.title,
-          description: v.description,
-          type: "video" as ContentType,
-          thumbnailUrl: thumb.url,
-          thumbnailRequiresAuth: thumb.requiresAuth,
-          duration: v.duration,
-          categoryId: v.categoryId,
-          createdAt: v.createdAt,
-          isNew: isVideoNew(v),
+          id: item.id,
+          title: item.title,
+          description: item.description,
+          type: isAudio ? "audio" as ContentType : "video" as ContentType,
+          thumbnailUrl: isAudio ? null : thumb.url,
+          thumbnailRequiresAuth: isAudio ? false : thumb.requiresAuth,
+          duration: item.duration,
+          categoryId: item.categoryId,
+          createdAt: item.createdAt,
+          isNew: isVideoNew(item),
         };
       }),
-    });
-  });
-
-  const audioByCategory = new Map<string, VideoItem[]>();
-  audioFiles.forEach((audio) => {
-    const category = audio.categoryId || "audio";
-    if (!audioByCategory.has(category)) {
-      audioByCategory.set(category, []);
-    }
-    audioByCategory.get(category)!.push(audio);
-  });
-
-  audioByCategory.forEach((categoryAudio, categoryId) => {
-    const categoryName = categoryMap.get(categoryId) || formatCategoryName(categoryId);
-    sections.push({
-      id: `audio-${categoryId}`,
-      name: categoryName,
-      type: "audio",
-      items: categoryAudio.map((a) => ({
-        id: a.id,
-        title: a.title,
-        type: "audio" as ContentType,
-        duration: a.duration,
-        categoryId: a.categoryId,
-        createdAt: a.createdAt,
-      })),
     });
   });
 
