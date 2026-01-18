@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   GestureResponderEvent,
   Platform,
+  FlatList,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -112,6 +113,7 @@ export default function ContentPlayerScreen() {
   const progressBarRef = useRef<View>(null);
   const [progressBarWidth, setProgressBarWidth] = useState(0);
   const [zoomedPageIndex, setZoomedPageIndex] = useState<number | null>(null);
+  const [currentPageIndex, setCurrentPageIndex] = useState(0);
 
   const playbackSpeeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
 
@@ -478,38 +480,41 @@ export default function ContentPlayerScreen() {
       );
     }
 
+    const documentHeight = SCREEN_HEIGHT - insets.top - insets.bottom - 120;
+
+    const renderDocumentPage = ({ item: pageUrl, index }: { item: string; index: number }) => (
+      <View style={[styles.documentPageFullscreen, { width: SCREEN_WIDTH, height: documentHeight }]}>
+        <ZoomableImage
+          uri={pageUrl}
+          headers={authToken ? { Authorization: `Bearer ${authToken}` } : undefined}
+          style={{ width: SCREEN_WIDTH, height: documentHeight - 40 }}
+        />
+        <ThemedText style={[styles.pageNumberOverlay, { color: theme.textSecondary }]}>
+          {index + 1} / {documentPages.length}
+        </ThemedText>
+      </View>
+    );
+
     return (
-      <ScrollView 
-        style={styles.documentScrollView}
-        contentContainerStyle={styles.documentContent}
-      >
-        {documentPages.map((pageUrl, index) => {
-          const isZoomed = zoomedPageIndex === index;
-          const isOtherZoomed = zoomedPageIndex !== null && zoomedPageIndex !== index;
-          
-          return (
-            <View 
-              key={index} 
-              style={[
-                styles.documentPage,
-                isZoomed && styles.documentPageZoomed,
-                isOtherZoomed && styles.documentPageHidden,
-              ]}
-            >
-              <ZoomableImage
-                uri={pageUrl}
-                headers={authToken ? { Authorization: `Bearer ${authToken}` } : undefined}
-                style={styles.pageImage}
-                onZoomStart={() => setZoomedPageIndex(index)}
-                onZoomEnd={() => setZoomedPageIndex(null)}
-              />
-              <ThemedText style={[styles.pageNumber, { color: theme.textSecondary }]}>
-                Page {index + 1} of {documentPages.length}
-              </ThemedText>
-            </View>
-          );
-        })}
-      </ScrollView>
+      <View style={[styles.documentContainer, { height: documentHeight }]}>
+        <FlatList
+          data={documentPages}
+          renderItem={renderDocumentPage}
+          keyExtractor={(_, index) => index.toString()}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={(e) => {
+            const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+            setCurrentPageIndex(index);
+          }}
+          getItemLayout={(_, index) => ({
+            length: SCREEN_WIDTH,
+            offset: SCREEN_WIDTH * index,
+            index,
+          })}
+        />
+      </View>
     );
   };
 
@@ -773,23 +778,24 @@ const styles = StyleSheet.create({
   documentContent: {
     paddingVertical: Spacing.lg,
   },
-  documentPage: {
-    marginBottom: Spacing.lg,
+  documentContainer: {
+    flex: 1,
+  },
+  documentPageFullscreen: {
+    justifyContent: "center",
     alignItems: "center",
   },
-  documentPageZoomed: {
-    zIndex: 1000,
-  },
-  documentPageHidden: {
-    opacity: 0,
-  },
-  pageImage: {
-    width: SCREEN_WIDTH - Spacing.lg * 2,
-    height: (SCREEN_WIDTH - Spacing.lg * 2) * 1.4,
-  },
-  pageNumber: {
-    marginTop: Spacing.sm,
-    fontSize: 12,
+  pageNumberOverlay: {
+    position: "absolute",
+    bottom: 10,
+    alignSelf: "center",
+    fontSize: 14,
+    fontWeight: "500",
+    backgroundColor: "rgba(0,0,0,0.5)",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    overflow: "hidden",
   },
   infoSection: {
     padding: Spacing.xl,
