@@ -4,12 +4,22 @@ const API_BASE_URL = "https://onetimeonetime.com";
 const AUTH_TOKEN_KEY = "@onetimeonetime_auth_token";
 const USER_DATA_KEY = "@onetimeonetime_user_data";
 const VIEWED_CONTENT_KEY = "@onetimeonetime_viewed_content";
+const SUBSCRIPTION_KEY = "@onetimeonetime_subscription";
 
 export interface User {
   id: string;
   email: string;
   name?: string;
   avatarUrl?: string;
+}
+
+export interface SubscriptionStatus {
+  subscriptionStatus: string;
+  hasActiveSubscription: boolean;
+  hasUsedTrial: boolean;
+  trialEndsAt?: string;
+  daysRemaining?: number;
+  isWhitelistedEmail?: boolean;
 }
 
 export interface VideoCategory {
@@ -160,7 +170,26 @@ export async function clearAuth(): Promise<void> {
   await Promise.all([
     AsyncStorage.removeItem(AUTH_TOKEN_KEY),
     AsyncStorage.removeItem(USER_DATA_KEY),
+    AsyncStorage.removeItem(SUBSCRIPTION_KEY),
   ]);
+}
+
+export async function getSubscriptionStatus(): Promise<SubscriptionStatus | null> {
+  try {
+    const data = await AsyncStorage.getItem(SUBSCRIPTION_KEY);
+    if (data) {
+      return JSON.parse(data);
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+export async function checkSubscription(): Promise<SubscriptionStatus> {
+  const response = await makeRequest<SubscriptionStatus>("/api/mobile/subscription");
+  await AsyncStorage.setItem(SUBSCRIPTION_KEY, JSON.stringify(response));
+  return response;
 }
 
 export async function refreshToken(): Promise<{ token: string }> {

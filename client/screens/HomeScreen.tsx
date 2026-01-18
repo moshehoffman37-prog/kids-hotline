@@ -7,6 +7,7 @@ import {
   RefreshControl,
   Pressable,
   ActivityIndicator,
+  Linking,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
@@ -36,11 +37,21 @@ export default function HomeScreen() {
     queryFn: api.getContentByCategories,
   });
 
+  const { data: subscription } = useQuery({
+    queryKey: ["subscription-status"],
+    queryFn: api.checkSubscription,
+  });
+
   useFocusEffect(
     useCallback(() => {
       refetch();
     }, [refetch])
   );
+
+  const isSubscriptionInactive = useMemo(() => {
+    if (!subscription) return false;
+    return !subscription.hasActiveSubscription;
+  }, [subscription]);
 
   const allItems = useMemo(() => {
     if (!sections) return [];
@@ -83,6 +94,11 @@ export default function HomeScreen() {
   const handleSettingsPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSettingsVisible(true);
+  };
+
+  const handleUpdateSubscription = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Linking.openURL("https://onetimeonetime.com/account");
   };
 
   if (isLoading) {
@@ -130,122 +146,148 @@ export default function HomeScreen() {
         onClose={() => setSettingsVisible(false)}
       />
 
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={[
-          styles.contentContainer,
-          { paddingBottom: insets.bottom + Spacing.xl },
-        ]}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefetching}
-            onRefresh={refetch}
-            tintColor={theme.accent}
-          />
-        }
-      >
-        <View style={styles.recentSection}>
-          <View style={styles.sectionHeader}>
-            <Feather name="clock" size={18} color={theme.accent} style={styles.sectionIcon} />
-            <ThemedText style={[styles.sectionTitle, { color: theme.text }]}>
-              Recent
+      {isSubscriptionInactive ? (
+        <View style={[styles.inactiveContainer, { backgroundColor: theme.backgroundRoot }]}>
+          <View style={[styles.inactiveCard, { backgroundColor: theme.backgroundSecondary }]}>
+            <Feather name="alert-circle" size={48} color={theme.warning} />
+            <ThemedText style={[styles.inactiveTitle, { color: theme.text }]}>
+              Subscription Inactive
             </ThemedText>
+            <ThemedText style={[styles.inactiveMessage, { color: theme.textSecondary }]}>
+              Your subscription is no longer active. Please visit onetimeonetime.com to update your subscription and continue accessing content.
+            </ThemedText>
+            <Pressable
+              onPress={handleUpdateSubscription}
+              style={({ pressed }) => [
+                styles.updateButton,
+                { backgroundColor: theme.accent, opacity: pressed ? 0.8 : 1 },
+              ]}
+            >
+              <ThemedText style={[styles.updateButtonText, { color: theme.buttonText }]}>
+                Update Subscription
+              </ThemedText>
+              <Feather name="external-link" size={16} color={theme.buttonText} style={{ marginLeft: Spacing.sm }} />
+            </Pressable>
           </View>
-          {recentItems.length > 0 ? (
-            <FlatList
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              data={recentItems}
-              keyExtractor={(item) => `recent-${item.id}`}
-              renderItem={({ item }) => (
-                <ContentCard
-                  item={item}
-                  onPress={() => handleContentPress(item)}
-                  size="small"
-                />
-              )}
-              contentContainerStyle={styles.recentItems}
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={[
+            styles.contentContainer,
+            { paddingBottom: insets.bottom + Spacing.xl },
+          ]}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefetching}
+              onRefresh={refetch}
+              tintColor={theme.accent}
             />
-          ) : (
-            <View style={styles.emptyRecent}>
-              <ThemedText style={[styles.emptyText, { color: theme.textSecondary }]}>
-                No recent content
+          }
+        >
+          <View style={styles.recentSection}>
+            <View style={styles.sectionHeader}>
+              <Feather name="clock" size={18} color={theme.accent} style={styles.sectionIcon} />
+              <ThemedText style={[styles.sectionTitle, { color: theme.text }]}>
+                Recent
               </ThemedText>
             </View>
-          )}
-        </View>
-
-        <View style={styles.categoriesSection}>
-          <View style={styles.sectionHeader}>
-            <Feather name="folder" size={18} color={theme.accent} style={styles.sectionIcon} />
-            <ThemedText style={[styles.sectionTitle, { color: theme.text }]}>
-              Categories
-            </ThemedText>
-          </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.categoryChips}
-          >
-            {categories.map((category) => {
-              const isSelected = category.id === selectedCategory;
-              return (
-                <Pressable
-                  key={category.id}
-                  onPress={() => handleCategoryPress(category.id)}
-                  style={[
-                    styles.categoryChip,
-                    {
-                      backgroundColor: isSelected ? theme.accent : theme.backgroundSecondary,
-                      borderColor: isSelected ? theme.accent : theme.border,
-                    },
-                  ]}
-                >
-                  <ThemedText
-                    style={[
-                      styles.categoryChipText,
-                      { color: isSelected ? theme.buttonText : theme.text },
-                    ]}
-                  >
-                    {category.name}
-                  </ThemedText>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
-
-        {selectedCategory ? (
-          <View style={styles.filteredContent}>
-            <View style={styles.contentGrid}>
-              {filteredItems.map((item) => (
-                <View key={item.id} style={styles.gridItem}>
+            {recentItems.length > 0 ? (
+              <FlatList
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                data={recentItems}
+                keyExtractor={(item) => `recent-${item.id}`}
+                renderItem={({ item }) => (
                   <ContentCard
                     item={item}
                     onPress={() => handleContentPress(item)}
-                    size="medium"
+                    size="small"
                   />
-                </View>
-              ))}
-            </View>
-            {filteredItems.length === 0 ? (
-              <View style={styles.emptyCategory}>
-                <Feather name="inbox" size={32} color={theme.textSecondary} />
+                )}
+                contentContainerStyle={styles.recentItems}
+              />
+            ) : (
+              <View style={styles.emptyRecent}>
                 <ThemedText style={[styles.emptyText, { color: theme.textSecondary }]}>
-                  No content in this category
+                  No recent content
                 </ThemedText>
               </View>
-            ) : null}
+            )}
           </View>
-        ) : (
-          <View style={styles.selectCategoryHint}>
-            <Feather name="arrow-up" size={24} color={theme.textSecondary} />
-            <ThemedText style={[styles.hintText, { color: theme.textSecondary }]}>
-              Select a category to browse content
-            </ThemedText>
+
+          <View style={styles.categoriesSection}>
+            <View style={styles.sectionHeader}>
+              <Feather name="folder" size={18} color={theme.accent} style={styles.sectionIcon} />
+              <ThemedText style={[styles.sectionTitle, { color: theme.text }]}>
+                Categories
+              </ThemedText>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.categoryChips}
+            >
+              {categories.map((category) => {
+                const isSelected = category.id === selectedCategory;
+                return (
+                  <Pressable
+                    key={category.id}
+                    onPress={() => handleCategoryPress(category.id)}
+                    style={[
+                      styles.categoryChip,
+                      {
+                        backgroundColor: isSelected ? theme.accent : theme.backgroundSecondary,
+                        borderColor: isSelected ? theme.accent : theme.border,
+                      },
+                    ]}
+                  >
+                    <ThemedText
+                      style={[
+                        styles.categoryChipText,
+                        { color: isSelected ? theme.buttonText : theme.text },
+                      ]}
+                    >
+                      {category.name}
+                    </ThemedText>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
           </View>
-        )}
-      </ScrollView>
+
+          {selectedCategory ? (
+            <View style={styles.filteredContent}>
+              <View style={styles.contentGrid}>
+                {filteredItems.map((item) => (
+                  <View key={item.id} style={styles.gridItem}>
+                    <ContentCard
+                      item={item}
+                      onPress={() => handleContentPress(item)}
+                      size="medium"
+                    />
+                  </View>
+                ))}
+              </View>
+              {filteredItems.length === 0 ? (
+                <View style={styles.emptyCategory}>
+                  <Feather name="inbox" size={32} color={theme.textSecondary} />
+                  <ThemedText style={[styles.emptyText, { color: theme.textSecondary }]}>
+                    No content in this category
+                  </ThemedText>
+                </View>
+              ) : null}
+            </View>
+          ) : (
+            <View style={styles.selectCategoryHint}>
+              <Feather name="arrow-up" size={24} color={theme.textSecondary} />
+              <ThemedText style={[styles.hintText, { color: theme.textSecondary }]}>
+                Select a category to browse content
+              </ThemedText>
+            </View>
+          )}
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -354,5 +396,41 @@ const styles = StyleSheet.create({
   emptyText: {
     marginTop: Spacing.sm,
     fontSize: 14,
+  },
+  inactiveContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: Spacing.xl,
+  },
+  inactiveCard: {
+    borderRadius: BorderRadius.xl,
+    padding: Spacing["2xl"],
+    alignItems: "center",
+    maxWidth: 340,
+    width: "100%",
+  },
+  inactiveTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.sm,
+  },
+  inactiveMessage: {
+    fontSize: 15,
+    textAlign: "center",
+    lineHeight: 22,
+    marginBottom: Spacing.xl,
+  },
+  updateButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xl,
+    borderRadius: BorderRadius.md,
+  },
+  updateButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
