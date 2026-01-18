@@ -7,6 +7,7 @@ import {
   Dimensions,
   ActivityIndicator,
   GestureResponderEvent,
+  Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -219,6 +220,23 @@ export default function ContentPlayerScreen() {
           <ThemedText style={[styles.errorSubtext, { color: theme.textSecondary }]}>
             Please check back later
           </ThemedText>
+        </View>
+      );
+    }
+
+    if (Platform.OS === "web") {
+      return (
+        <View style={styles.videoContainer}>
+          <iframe
+            src={videoEmbedUrl}
+            style={{
+              width: "100%",
+              height: "100%",
+              border: "none",
+            }}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+            allowFullScreen
+          />
         </View>
       );
     }
