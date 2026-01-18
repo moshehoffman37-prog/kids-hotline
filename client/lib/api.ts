@@ -20,7 +20,8 @@ export interface VideoItem {
   id: string;
   title: string;
   description?: string | null;
-  thumbnailUrl?: string | null;
+  thumbnailPath?: string | null;
+  bunnyThumbnailUrl?: string | null;
   bunnyGuid?: string | null;
   categoryId?: string | null;
   status?: string;
@@ -191,11 +192,14 @@ export async function getDocuments(): Promise<DocumentItem[]> {
 }
 
 export function getVideoThumbnailUrl(video: VideoItem): string | null {
-  if (video.thumbnailUrl) {
-    if (video.thumbnailUrl.startsWith("http")) {
-      return video.thumbnailUrl;
+  if (video.thumbnailPath) {
+    if (video.thumbnailPath.startsWith("http")) {
+      return video.thumbnailPath;
     }
-    return `${API_BASE_URL}${video.thumbnailUrl}`;
+    return `${API_BASE_URL}${video.thumbnailPath}`;
+  }
+  if (video.bunnyThumbnailUrl) {
+    return video.bunnyThumbnailUrl;
   }
   if (video.bunnyGuid) {
     return `https://vz-b4f3c875-a3e.b-cdn.net/${video.bunnyGuid}/thumbnail.jpg`;
