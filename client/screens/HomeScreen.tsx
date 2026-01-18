@@ -53,9 +53,7 @@ export default function HomeScreen() {
 
   const categories = useMemo(() => {
     if (!sections) return [];
-    return sections
-      .filter((s) => s.type !== "document")
-      .map((s) => ({ id: s.id, name: s.name }));
+    return sections.map((s) => ({ id: s.id, name: s.name }));
   }, [sections]);
 
   const filteredItems = useMemo(() => {
