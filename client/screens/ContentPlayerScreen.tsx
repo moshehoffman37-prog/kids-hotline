@@ -58,6 +58,21 @@ export default function ContentPlayerScreen() {
   }, []);
 
   useEffect(() => {
+    const setupAudio = async () => {
+      try {
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: true,
+          shouldDuckAndroid: true,
+        });
+      } catch (error) {
+        console.log("Audio mode setup error:", error);
+      }
+    };
+    setupAudio();
+  }, []);
+
+  useEffect(() => {
     if (item.type === "video" || item.type === "audio") {
       setIsLoading(true);
       setVideoError(null);

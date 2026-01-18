@@ -52,6 +52,21 @@ export default function AlbumDetailScreen() {
   }, []);
 
   useEffect(() => {
+    const setupAudio = async () => {
+      try {
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: true,
+          shouldDuckAndroid: true,
+        });
+      } catch (error) {
+        console.log("Audio mode setup error:", error);
+      }
+    };
+    setupAudio();
+  }, []);
+
+  useEffect(() => {
     setIsLoading(true);
     api.getAlbumById(item.id)
       .then((data) => {
