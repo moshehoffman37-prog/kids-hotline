@@ -47,7 +47,19 @@ export interface StreamResponse {
   bunnyStorage?: boolean;
   embedUrl?: string;
   cdnUrl?: string;
+  hlsUrl?: string;
   mediaType?: "video" | "audio";
+}
+
+const BUNNY_CDN_BASE = "vz-b4f3c875-a3e.b-cdn.net";
+
+export function extractHlsUrl(embedUrl?: string): string | null {
+  if (!embedUrl) return null;
+  const match = embedUrl.match(/\/embed\/\d+\/([a-f0-9-]+)/i);
+  if (match && match[1]) {
+    return `https://${BUNNY_CDN_BASE}/${match[1]}/playlist.m3u8`;
+  }
+  return null;
 }
 
 export interface VideoViewStatus {

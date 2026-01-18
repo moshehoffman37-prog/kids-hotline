@@ -14,7 +14,7 @@ import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Image } from "expo-image";
 import { Audio, AVPlaybackStatus } from "expo-av";
 import { WebView } from "react-native-webview";
-import * as WebBrowser from "expo-web-browser";
+import { useVideoPlayer, VideoView } from "expo-video";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -31,6 +31,37 @@ const AUTH_TOKEN_KEY = "@onetimeonetime_auth_token";
 
 type ContentPlayerRouteProp = RouteProp<RootStackParamList, "ContentPlayer">;
 
+function NativeVideoPlayer({ hlsUrl }: { hlsUrl: string }) {
+  const player = useVideoPlayer(hlsUrl, (p) => {
+    p.loop = false;
+    p.play();
+  });
+
+  return (
+    <View style={videoPlayerStyles.container}>
+      <VideoView
+        player={player}
+        style={videoPlayerStyles.video}
+        allowsFullscreen
+        allowsPictureInPicture
+        contentFit="contain"
+      />
+    </View>
+  );
+}
+
+const videoPlayerStyles = StyleSheet.create({
+  container: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_WIDTH * 9 / 16,
+    backgroundColor: "#000000",
+  },
+  video: {
+    width: "100%",
+    height: "100%",
+  },
+});
+
 export default function ContentPlayerScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
@@ -46,6 +77,7 @@ export default function ContentPlayerScreen() {
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [documentPages, setDocumentPages] = useState<string[]>([]);
   const [videoEmbedUrl, setVideoEmbedUrl] = useState<string | null>(null);
+  const [videoHlsUrl, setVideoHlsUrl] = useState<string | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
   const [audioStreamUrl, setAudioStreamUrl] = useState<string | null>(null);
   const [playbackRate, setPlaybackRate] = useState(1.0);
@@ -91,6 +123,11 @@ export default function ContentPlayerScreen() {
             const separator = response.embedUrl.includes("?") ? "&" : "?";
             const themedUrl = `${response.embedUrl}${separator}primaryColor=${accentColor}`;
             setVideoEmbedUrl(themedUrl);
+            
+            const hlsUrl = api.extractHlsUrl(response.embedUrl);
+            if (hlsUrl) {
+              setVideoHlsUrl(hlsUrl);
+            }
           } else if (item.type === "video") {
             setVideoError("Video stream not available");
           }
@@ -261,41 +298,16 @@ export default function ContentPlayerScreen() {
       );
     }
 
-    const openInBrowser = async () => {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      await WebBrowser.openBrowserAsync(videoEmbedUrl);
-    };
-
-    const hasThumbnail = item.thumbnailUrl;
-    const thumbnailSource = hasThumbnail && item.thumbnailUrl
-      ? {
-          uri: item.thumbnailUrl,
-          headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
-        }
-      : null;
+    if (videoHlsUrl) {
+      return <NativeVideoPlayer hlsUrl={videoHlsUrl} />;
+    }
 
     return (
-      <View style={styles.videoContainer}>
-        {thumbnailSource ? (
-          <Image
-            source={thumbnailSource}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-          />
-        ) : null}
-        <View style={[StyleSheet.absoluteFill, styles.videoOverlay]} />
-        <Pressable
-          onPress={openInBrowser}
-          style={({ pressed }) => [
-            styles.playVideoButton,
-            { backgroundColor: theme.accent, opacity: pressed ? 0.8 : 1 },
-          ]}
-        >
-          <Feather name="play" size={32} color={theme.buttonText} />
-          <ThemedText style={[styles.playVideoText, { color: theme.buttonText }]}>
-            Play Video
-          </ThemedText>
-        </Pressable>
+      <View style={[styles.errorContainer, { backgroundColor: theme.backgroundSecondary }]}>
+        <Feather name="alert-circle" size={32} color={theme.textSecondary} />
+        <ThemedText style={[styles.errorText, { color: theme.textSecondary }]}>
+          Video format not supported
+        </ThemedText>
       </View>
     );
   };
