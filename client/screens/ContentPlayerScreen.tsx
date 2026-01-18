@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   StyleSheet,
@@ -6,19 +6,20 @@ import {
   Pressable,
   Dimensions,
   ActivityIndicator,
+  Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Image } from "expo-image";
-import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
-import { Audio } from "expo-av";
+import { Audio, AVPlaybackStatus } from "expo-av";
+import { WebView } from "react-native-webview";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
-import { ContentItem, addToHistory } from "@/lib/content";
+import * as api from "@/lib/api";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -39,35 +40,38 @@ export default function ContentPlayerScreen() {
   const [audioPosition, setAudioPosition] = useState(0);
 
   React.useEffect(() => {
-    addToHistory(item);
-    
     return () => {
       if (sound) {
         sound.unloadAsync();
       }
     };
-  }, [item, sound]);
+  }, [sound]);
 
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (sound) {
+      sound.unloadAsync();
+    }
     navigation.goBack();
-  };
-
-  const handleVideoLoad = () => {
-    setIsLoading(false);
   };
 
   const handleAudioPlayPause = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
+    const streamUrl = api.getAudioStreamUrl(item.id);
+    
     if (!sound) {
-      const { sound: newSound } = await Audio.Sound.createAsync(
-        { uri: item.mediaUrl },
-        { shouldPlay: true },
-        onAudioStatusUpdate
-      );
-      setSound(newSound);
-      setIsPlaying(true);
+      try {
+        const { sound: newSound } = await Audio.Sound.createAsync(
+          { uri: streamUrl },
+          { shouldPlay: true },
+          onAudioStatusUpdate
+        );
+        setSound(newSound);
+        setIsPlaying(true);
+      } catch (error) {
+        console.error("Error loading audio:", error);
+      }
     } else {
       if (isPlaying) {
         await sound.pauseAsync();
@@ -98,40 +102,60 @@ export default function ContentPlayerScreen() {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const renderVideoPlayer = () => (
-    <View style={styles.videoContainer}>
-      {isLoading ? (
-        <View style={[styles.loadingOverlay, { backgroundColor: theme.backgroundSecondary }]}>
-          <ActivityIndicator size="large" color={theme.primary} />
+  const renderVideoPlayer = () => {
+    if (!item.embedUrl) {
+      return (
+        <View style={[styles.errorContainer, { backgroundColor: theme.backgroundSecondary }]}>
+          <Feather name="alert-circle" size={32} color={theme.textSecondary} />
+          <ThemedText style={[styles.errorText, { color: theme.textSecondary }]}>
+            Video not available
+          </ThemedText>
         </View>
-      ) : null}
-      <Video
-        source={{ uri: item.mediaUrl }}
-        style={styles.video}
-        useNativeControls
-        resizeMode={ResizeMode.CONTAIN}
-        shouldPlay
-        onLoad={handleVideoLoad}
-      />
-    </View>
-  );
+      );
+    }
+
+    return (
+      <View style={styles.videoContainer}>
+        {isLoading ? (
+          <View style={[styles.loadingOverlay, { backgroundColor: theme.backgroundSecondary }]}>
+            <ActivityIndicator size="large" color={theme.accent} />
+          </View>
+        ) : null}
+        <WebView
+          source={{ uri: item.embedUrl }}
+          style={styles.webview}
+          allowsFullscreenVideo
+          allowsInlineMediaPlayback
+          mediaPlaybackRequiresUserAction={false}
+          javaScriptEnabled
+          onLoadEnd={() => setIsLoading(false)}
+        />
+      </View>
+    );
+  };
 
   const renderAudioPlayer = () => (
     <View style={styles.audioContainer}>
-      <Image
-        source={{ uri: item.thumbnailUrl }}
-        style={styles.audioThumbnail}
-        contentFit="cover"
-      />
+      {item.thumbnailUrl ? (
+        <Image
+          source={{ uri: item.thumbnailUrl }}
+          style={styles.audioThumbnail}
+          contentFit="cover"
+        />
+      ) : (
+        <View style={[styles.audioThumbnailPlaceholder, { backgroundColor: theme.backgroundSecondary }]}>
+          <Feather name="headphones" size={64} color={theme.accent} />
+        </View>
+      )}
       <View style={styles.audioControls}>
         <Pressable
           onPress={handleAudioPlayPause}
-          style={[styles.playButton, { backgroundColor: theme.primary }]}
+          style={[styles.playButton, { backgroundColor: theme.accent }]}
         >
           <Feather
             name={isPlaying ? "pause" : "play"}
             size={32}
-            color="#FFFFFF"
+            color={theme.buttonText}
           />
         </Pressable>
         <View style={styles.progressContainer}>
@@ -142,7 +166,7 @@ export default function ContentPlayerScreen() {
               style={[
                 styles.progressFill,
                 {
-                  backgroundColor: theme.primary,
+                  backgroundColor: theme.accent,
                   width: audioDuration > 0
                     ? `${(audioPosition / audioDuration) * 100}%`
                     : "0%",
@@ -163,27 +187,25 @@ export default function ContentPlayerScreen() {
     </View>
   );
 
-  const renderPhotoViewer = () => (
-    <ScrollView
-      style={styles.photoScrollView}
-      contentContainerStyle={styles.photoContainer}
-      maximumZoomScale={3}
-      minimumZoomScale={1}
-      showsVerticalScrollIndicator={false}
-    >
-      <Image
-        source={{ uri: item.mediaUrl }}
-        style={styles.photo}
-        contentFit="contain"
-        onLoad={() => setIsLoading(false)}
-      />
-      {isLoading ? (
-        <View style={[styles.loadingOverlay, { backgroundColor: theme.backgroundSecondary }]}>
-          <ActivityIndicator size="large" color={theme.primary} />
-        </View>
-      ) : null}
-    </ScrollView>
-  );
+  const renderDocumentViewer = () => {
+    const pagesUrl = api.getDocumentPagesUrl(item.id);
+    
+    return (
+      <View style={styles.documentContainer}>
+        {isLoading ? (
+          <View style={[styles.loadingOverlay, { backgroundColor: theme.backgroundSecondary }]}>
+            <ActivityIndicator size="large" color={theme.accent} />
+          </View>
+        ) : null}
+        <WebView
+          source={{ uri: pagesUrl }}
+          style={styles.webview}
+          onLoadEnd={() => setIsLoading(false)}
+          scalesPageToFit
+        />
+      </View>
+    );
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
@@ -218,10 +240,10 @@ export default function ContentPlayerScreen() {
         <View style={styles.headerRight} />
       </View>
 
-      <View style={styles.content}>
+      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
         {item.type === "video" ? renderVideoPlayer() : null}
         {item.type === "audio" ? renderAudioPlayer() : null}
-        {item.type === "photo" ? renderPhotoViewer() : null}
+        {item.type === "document" ? renderDocumentViewer() : null}
 
         <View style={styles.infoSection}>
           <ThemedText style={[styles.title, { color: theme.text }]}>
@@ -233,19 +255,26 @@ export default function ContentPlayerScreen() {
             </ThemedText>
           ) : null}
           <View style={styles.metaRow}>
-            <View style={[styles.categoryBadge, { backgroundColor: `${theme.primary}15` }]}>
-              <ThemedText style={[styles.categoryText, { color: theme.primary }]}>
-                {item.category}
-              </ThemedText>
-            </View>
+            {item.category ? (
+              <View style={[styles.categoryBadge, { backgroundColor: `${theme.accent}20` }]}>
+                <ThemedText style={[styles.categoryBadgeText, { color: theme.accent }]}>
+                  {item.category}
+                </ThemedText>
+              </View>
+            ) : null}
             {item.duration ? (
               <ThemedText style={[styles.duration, { color: theme.textSecondary }]}>
                 {formatTime(item.duration * 1000)}
               </ThemedText>
             ) : null}
+            {item.pageCount ? (
+              <ThemedText style={[styles.duration, { color: theme.textSecondary }]}>
+                {item.pageCount} pages
+              </ThemedText>
+            ) : null}
           </View>
         </View>
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -279,22 +308,37 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
+  contentContainer: {
+    flexGrow: 1,
+  },
   videoContainer: {
     width: SCREEN_WIDTH,
     height: SCREEN_WIDTH * 9 / 16,
     backgroundColor: "#000000",
   },
-  video: {
-    width: "100%",
-    height: "100%",
+  webview: {
+    flex: 1,
+    backgroundColor: "transparent",
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: "center",
     alignItems: "center",
+    zIndex: 1,
+  },
+  errorContainer: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_WIDTH * 9 / 16,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  errorText: {
+    marginTop: Spacing.md,
+    fontSize: 16,
   },
   audioContainer: {
     padding: Spacing.xl,
+    alignItems: "center",
   },
   audioThumbnail: {
     width: SCREEN_WIDTH - Spacing.xl * 2,
@@ -302,7 +346,16 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.lg,
     marginBottom: Spacing.xl,
   },
+  audioThumbnailPlaceholder: {
+    width: SCREEN_WIDTH - Spacing.xl * 2,
+    height: SCREEN_WIDTH - Spacing.xl * 2,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.xl,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   audioControls: {
+    width: "100%",
     alignItems: "center",
   },
   playButton: {
@@ -333,13 +386,7 @@ const styles = StyleSheet.create({
   timeText: {
     fontSize: 12,
   },
-  photoScrollView: {
-    flex: 1,
-  },
-  photoContainer: {
-    flexGrow: 1,
-  },
-  photo: {
+  documentContainer: {
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT * 0.6,
   },
@@ -359,18 +406,19 @@ const styles = StyleSheet.create({
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
+    flexWrap: "wrap",
   },
   categoryBadge: {
     paddingVertical: Spacing.xs,
     paddingHorizontal: Spacing.md,
     borderRadius: BorderRadius.full,
+    marginRight: Spacing.md,
   },
-  categoryText: {
+  categoryBadgeText: {
     fontSize: 13,
     fontWeight: "500",
   },
   duration: {
     fontSize: 13,
-    marginLeft: Spacing.md,
   },
 });

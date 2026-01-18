@@ -22,42 +22,38 @@ import { ContentCard } from "@/components/ContentCard";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { Spacing, BorderRadius } from "@/constants/theme";
-import { ContentItem } from "@/lib/content";
+import * as api from "@/lib/api";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-
-interface Category {
-  id: string;
-  name: string;
-  icon?: string;
-}
-
-interface HomeData {
-  recent: ContentItem[];
-  categories: Category[];
-  allContent: ContentItem[];
-}
 
 export default function HomeScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { logout, user } = useAuth();
+  const { logout } = useAuth();
 
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  const { data, isLoading, refetch, isRefetching } = useQuery<HomeData>({
-    queryKey: ["/api/content/home"],
+  const { data: content, isLoading, refetch, isRefetching } = useQuery({
+    queryKey: ["all-content"],
+    queryFn: api.getAllContent,
   });
 
-  const handleCategoryPress = (categoryId: string) => {
+  const categories = content ? api.getCategories(content) : [];
+  const recent = content?.slice(0, 4) || [];
+  
+  const filteredContent = selectedCategory
+    ? content?.filter((item) => item.category === selectedCategory) || []
+    : content || [];
+
+  const handleCategoryPress = (category: string) => {
     Haptics.selectionAsync();
-    setSelectedCategory(selectedCategory === categoryId ? null : categoryId);
+    setSelectedCategory(selectedCategory === category ? null : category);
   };
 
   const handleContentPress = useCallback(
-    (item: ContentItem) => {
+    (item: api.ContentItem) => {
       navigation.navigate("ContentPlayer", { item });
     },
     [navigation]
@@ -68,11 +64,7 @@ export default function HomeScreen() {
     await logout();
   };
 
-  const filteredContent = selectedCategory
-    ? data?.allContent.filter((item) => item.category === selectedCategory) || []
-    : data?.allContent || [];
-
-  const renderRecentItem = ({ item }: { item: ContentItem }) => (
+  const renderRecentItem = ({ item }: { item: api.ContentItem }) => (
     <ContentCard
       item={item}
       onPress={() => handleContentPress(item)}
@@ -80,7 +72,7 @@ export default function HomeScreen() {
     />
   );
 
-  const renderContentItem = ({ item }: { item: ContentItem }) => (
+  const renderContentItem = ({ item }: { item: api.ContentItem }) => (
     <View style={styles.gridItem}>
       <ContentCard
         item={item}
@@ -93,7 +85,7 @@ export default function HomeScreen() {
   if (isLoading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: theme.backgroundRoot }]}>
-        <ActivityIndicator size="large" color={theme.primary} />
+        <ActivityIndicator size="large" color={theme.accent} />
       </View>
     );
   }
@@ -112,13 +104,10 @@ export default function HomeScreen() {
       >
         <View style={styles.headerLeft}>
           <Image
-            source={require("../../assets/images/icon.png")}
+            source={require("../../assets/images/logo.webp")}
             style={styles.logo}
             contentFit="contain"
           />
-          <ThemedText style={[styles.appTitle, { color: theme.text }]}>
-            Kids' Hotline
-          </ThemedText>
         </View>
         <Pressable
           onPress={handleLogout}
@@ -138,7 +127,7 @@ export default function HomeScreen() {
 
       <FlatList
         data={filteredContent}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => `${item.type}-${item.id}`}
         numColumns={2}
         renderItem={renderContentItem}
         contentContainerStyle={[
@@ -150,12 +139,12 @@ export default function HomeScreen() {
           <RefreshControl
             refreshing={isRefetching}
             onRefresh={refetch}
-            tintColor={theme.primary}
+            tintColor={theme.accent}
           />
         }
         ListHeaderComponent={
           <>
-            {data?.recent && data.recent.length > 0 ? (
+            {recent.length > 0 ? (
               <View style={styles.recentSection}>
                 <ThemedText style={[styles.sectionTitle, { color: theme.text }]}>
                   Recent
@@ -163,54 +152,55 @@ export default function HomeScreen() {
                 <FlatList
                   horizontal
                   showsHorizontalScrollIndicator={false}
-                  data={data.recent}
-                  keyExtractor={(item) => `recent-${item.id}`}
+                  data={recent}
+                  keyExtractor={(item) => `recent-${item.type}-${item.id}`}
                   renderItem={renderRecentItem}
                   contentContainerStyle={styles.recentList}
                 />
               </View>
             ) : null}
 
-            {data?.categories && data.categories.length > 0 ? (
+            {categories.length > 0 ? (
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 style={styles.categoriesContainer}
                 contentContainerStyle={styles.categoriesList}
               >
-                {data.categories.map((category) => {
-                  const isSelected = selectedCategory === category.id;
+                {categories.map((category) => {
+                  const isSelected = selectedCategory === category;
+                  const isDocuments = category.toLowerCase().includes("document");
                   return (
                     <Pressable
-                      key={category.id}
-                      onPress={() => handleCategoryPress(category.id)}
+                      key={category}
+                      onPress={() => handleCategoryPress(category)}
                       style={[
                         styles.categoryPill,
                         {
                           backgroundColor: isSelected
-                            ? "#F97316"
+                            ? theme.accent
                             : theme.backgroundDefault,
                           borderColor: isSelected
-                            ? "#F97316"
+                            ? theme.accent
                             : theme.border,
                         },
                       ]}
                     >
-                      {category.icon ? (
+                      {isDocuments ? (
                         <Feather
-                          name={category.icon as any}
+                          name="file-text"
                           size={14}
-                          color={isSelected ? "#FFFFFF" : theme.text}
+                          color={isSelected ? theme.buttonText : theme.text}
                           style={styles.categoryIcon}
                         />
                       ) : null}
                       <ThemedText
                         style={[
                           styles.categoryText,
-                          { color: isSelected ? "#FFFFFF" : theme.text },
+                          { color: isSelected ? theme.buttonText : theme.text },
                         ]}
                       >
-                        {category.name}
+                        {category}
                       </ThemedText>
                     </Pressable>
                   );
@@ -254,13 +244,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   logo: {
-    width: 36,
-    height: 36,
-    marginRight: Spacing.sm,
-  },
-  appTitle: {
-    fontSize: 18,
-    fontWeight: "700",
+    width: 120,
+    height: 40,
   },
   logoutButton: {
     flexDirection: "row",
@@ -289,7 +274,6 @@ const styles = StyleSheet.create({
   },
   categoriesList: {
     paddingHorizontal: Spacing.lg,
-    gap: Spacing.sm,
   },
   categoryPill: {
     flexDirection: "row",

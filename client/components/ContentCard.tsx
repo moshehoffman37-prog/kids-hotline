@@ -6,10 +6,10 @@ import { Feather } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
-import { ContentItem } from "@/lib/content";
+import * as api from "@/lib/api";
 
 interface ContentCardProps {
-  item: ContentItem;
+  item: api.ContentItem;
   onPress: () => void;
   size?: "small" | "medium" | "large";
 }
@@ -34,6 +34,19 @@ export function ContentCard({ item, onPress, size = "medium" }: ContentCardProps
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
+  const getTypeIcon = (): keyof typeof Feather.glyphMap => {
+    switch (item.type) {
+      case "video":
+        return "play-circle";
+      case "audio":
+        return "headphones";
+      case "document":
+        return "file-text";
+      default:
+        return "file";
+    }
+  };
+
   return (
     <Pressable
       onPress={onPress}
@@ -48,13 +61,19 @@ export function ContentCard({ item, onPress, size = "medium" }: ContentCardProps
         },
       ]}
     >
-      <View style={[styles.imageContainer, { height: cardHeight, borderRadius: BorderRadius.sm }]}>
-        <Image
-          source={{ uri: item.thumbnailUrl }}
-          style={[styles.image, { borderRadius: BorderRadius.sm }]}
-          contentFit="cover"
-          transition={200}
-        />
+      <View style={[styles.imageContainer, { height: cardHeight, borderRadius: BorderRadius.xs }]}>
+        {item.thumbnailUrl ? (
+          <Image
+            source={{ uri: item.thumbnailUrl }}
+            style={[styles.image, { borderRadius: BorderRadius.xs }]}
+            contentFit="cover"
+            transition={200}
+          />
+        ) : (
+          <View style={[styles.placeholderImage, { backgroundColor: theme.backgroundSecondary, borderRadius: BorderRadius.xs }]}>
+            <Feather name={getTypeIcon()} size={32} color={theme.textSecondary} />
+          </View>
+        )}
         {item.duration ? (
           <View style={styles.duration}>
             <ThemedText style={styles.durationText}>
@@ -67,7 +86,7 @@ export function ContentCard({ item, onPress, size = "medium" }: ContentCardProps
             <Feather name="headphones" size={16} color="#FFFFFF" />
           </View>
         ) : null}
-        {item.type === "photo" ? (
+        {item.type === "document" ? (
           <View style={styles.typeIcon}>
             <Feather name="file-text" size={16} color="#FFFFFF" />
           </View>
@@ -95,6 +114,12 @@ const styles = StyleSheet.create({
   image: {
     width: "100%",
     height: "100%",
+  },
+  placeholderImage: {
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
   },
   duration: {
     position: "absolute",

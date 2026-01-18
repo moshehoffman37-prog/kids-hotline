@@ -2,11 +2,11 @@ import React, { useState } from "react";
 import {
   View,
   StyleSheet,
-  Image,
   Pressable,
   ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Image } from "expo-image";
 import * as WebBrowser from "expo-web-browser";
 import * as Haptics from "expo-haptics";
 
@@ -74,13 +74,10 @@ export default function LoginScreen() {
     >
       <View style={styles.logoContainer}>
         <Image
-          source={require("../../assets/images/icon.png")}
+          source={require("../../assets/images/logo.webp")}
           style={styles.logo}
-          resizeMode="contain"
+          contentFit="contain"
         />
-        <ThemedText type="h2" style={[styles.appName, { color: theme.text }]}>
-          Kids' Hotline
-        </ThemedText>
         <ThemedText style={[styles.tagline, { color: theme.textSecondary }]}>
           Sign in to access your content
         </ThemedText>
@@ -127,10 +124,10 @@ export default function LoginScreen() {
         <Button
           onPress={handleLogin}
           disabled={isLoading}
-          style={styles.loginButton}
+          style={[styles.loginButton, { backgroundColor: theme.accent }]}
         >
           {isLoading ? (
-            <ActivityIndicator color="#FFFFFF" size="small" />
+            <ActivityIndicator color={theme.buttonText} size="small" />
           ) : (
             "Sign In"
           )}
@@ -142,7 +139,7 @@ export default function LoginScreen() {
             style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
             testID="button-forgot-password"
           >
-            <ThemedText style={[styles.link, { color: theme.primary }]}>
+            <ThemedText style={[styles.link, { color: theme.accent }]}>
               Forgot Password?
             </ThemedText>
           </Pressable>
@@ -154,7 +151,7 @@ export default function LoginScreen() {
             style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
             testID="button-create-account"
           >
-            <ThemedText style={[styles.link, { color: theme.primary }]}>
+            <ThemedText style={[styles.link, { color: theme.accent }]}>
               Create Account
             </ThemedText>
           </Pressable>
@@ -183,12 +180,9 @@ const styles = StyleSheet.create({
     marginBottom: Spacing["4xl"],
   },
   logo: {
-    width: 100,
-    height: 100,
+    width: 200,
+    height: 80,
     marginBottom: Spacing.lg,
-  },
-  appName: {
-    marginBottom: Spacing.xs,
   },
   tagline: {
     fontSize: 16,

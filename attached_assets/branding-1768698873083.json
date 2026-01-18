@@ -1,0 +1,92 @@
+{
+  "colorScheme": "light",
+  "fonts": [
+    {
+      "family": "Open Sans",
+      "count": 72
+    },
+    {
+      "family": "sans-serif",
+      "count": 72
+    },
+    {
+      "family": "Georgia",
+      "count": 2
+    },
+    {
+      "family": "Times New Roman",
+      "count": 2
+    },
+    {
+      "family": "serif",
+      "count": 2
+    }
+  ],
+  "colors": {
+    "primary": "#1A2A3A",
+    "accent": "#EDE518",
+    "background": "#161616",
+    "textPrimary": "#161616",
+    "link": "#EDE518"
+  },
+  "typography": {
+    "fontFamilies": {
+      "primary": "Open Sans",
+      "heading": "Georgia"
+    },
+    "fontStacks": {
+      "body": [
+        "Open Sans",
+        "sans-serif"
+      ],
+      "heading": [
+        "Georgia",
+        "Times New Roman",
+        "serif"
+      ],
+      "paragraph": [
+        "Open Sans",
+        "sans-serif"
+      ]
+    },
+    "fontSizes": {
+      "h1": "72px",
+      "h2": "48px",
+      "body": "24px"
+    }
+  },
+  "spacing": {
+    "baseUnit": 4,
+    "borderRadius": "4px"
+  },
+  "components": {},
+  "images": {
+    "logo": "File saved at: attached_assets/logo.webp",
+    "favicon": "File saved at: attached_assets/favicon.ico",
+    "ogImage": "File saved at: attached_assets/ogImage.png"
+  },
+  "__framework_hints": [],
+  "__llm_logo_reasoning": {
+    "selectedIndex": 0,
+    "reasoning": "Strong indicators: in header, header location, visible, top-left position, highest logo on page, alt contains brand name \"onetimeonetime.com\", src contains brand name \"onetimeonetime.com\", reasonable size. Score: 105 (clear winner by 105 points)",
+    "confidence": 0.9
+  },
+  "__llm_button_reasoning": {
+    "primary": {
+      "index": -1,
+      "text": "N/A",
+      "reasoning": "LLM failed"
+    },
+    "secondary": {
+      "index": -1,
+      "text": "N/A",
+      "reasoning": "LLM failed"
+    },
+    "confidence": 0
+  },
+  "confidence": {
+    "buttons": 0,
+    "colors": 0,
+    "overall": 0
+  }
+}

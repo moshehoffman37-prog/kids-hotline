@@ -1,49 +1,50 @@
 import { Platform } from "react-native";
 
-const primaryColor = "#2563EB";
-const primaryDark = "#1E40AF";
+const primaryColor = "#1A2A3A";
+const accentColor = "#EDE518";
+const backgroundColor = "#161616";
 
 export const Colors = {
   light: {
-    text: "#0F172A",
-    textSecondary: "#64748B",
-    buttonText: "#FFFFFF",
-    tabIconDefault: "#64748B",
-    tabIconSelected: primaryColor,
-    link: primaryColor,
+    text: "#161616",
+    textSecondary: "#666666",
+    buttonText: "#161616",
+    tabIconDefault: "#666666",
+    tabIconSelected: accentColor,
+    link: accentColor,
     primary: primaryColor,
-    primaryDark: primaryDark,
+    accent: accentColor,
     success: "#10B981",
     destructive: "#EF4444",
     border: "#E2E8F0",
-    backgroundRoot: "#F8FAFC",
-    backgroundDefault: "#FFFFFF",
-    backgroundSecondary: "#F1F5F9",
-    backgroundTertiary: "#E2E8F0",
+    backgroundRoot: "#FFFFFF",
+    backgroundDefault: "#F5F5F5",
+    backgroundSecondary: "#EEEEEE",
+    backgroundTertiary: "#E0E0E0",
     inputBackground: "#FFFFFF",
-    inputBorder: "#E2E8F0",
+    inputBorder: "#CCCCCC",
     cardBackground: "#FFFFFF",
-    overlay: "rgba(15, 23, 42, 0.5)",
+    overlay: "rgba(22, 22, 22, 0.5)",
   },
   dark: {
-    text: "#F8FAFC",
-    textSecondary: "#94A3B8",
-    buttonText: "#FFFFFF",
-    tabIconDefault: "#94A3B8",
-    tabIconSelected: "#60A5FA",
-    link: "#60A5FA",
-    primary: "#60A5FA",
-    primaryDark: "#3B82F6",
+    text: "#FFFFFF",
+    textSecondary: "#AAAAAA",
+    buttonText: "#161616",
+    tabIconDefault: "#888888",
+    tabIconSelected: accentColor,
+    link: accentColor,
+    primary: accentColor,
+    accent: accentColor,
     success: "#34D399",
     destructive: "#F87171",
-    border: "#334155",
-    backgroundRoot: "#0F172A",
-    backgroundDefault: "#1E293B",
-    backgroundSecondary: "#334155",
-    backgroundTertiary: "#475569",
-    inputBackground: "#1E293B",
-    inputBorder: "#334155",
-    cardBackground: "#1E293B",
+    border: "#333333",
+    backgroundRoot: backgroundColor,
+    backgroundDefault: "#1E1E1E",
+    backgroundSecondary: "#2A2A2A",
+    backgroundTertiary: "#333333",
+    inputBackground: "#1E1E1E",
+    inputBorder: "#444444",
+    cardBackground: "#1E1E1E",
     overlay: "rgba(0, 0, 0, 0.7)",
   },
 };
@@ -64,13 +65,13 @@ export const Spacing = {
 };
 
 export const BorderRadius = {
-  xs: 8,
-  sm: 12,
-  md: 16,
-  lg: 20,
-  xl: 24,
-  "2xl": 32,
-  "3xl": 40,
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  "2xl": 24,
+  "3xl": 32,
   full: 9999,
 };
 
@@ -121,16 +122,9 @@ export const Shadows = {
   card: {
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 3,
-  },
-  cardHover: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 5,
   },
   button: {
     shadowColor: "#000",
@@ -144,7 +138,7 @@ export const Shadows = {
 export const Fonts = Platform.select({
   ios: {
     sans: "system-ui",
-    serif: "ui-serif",
+    serif: "Georgia",
     rounded: "ui-rounded",
     mono: "ui-monospace",
   },
@@ -155,10 +149,9 @@ export const Fonts = Platform.select({
     mono: "monospace",
   },
   web: {
-    sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+    sans: "'Open Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
     serif: "Georgia, 'Times New Roman', serif",
-    rounded:
-      "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
-    mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+    rounded: "'SF Pro Rounded', sans-serif",
+    mono: "SFMono-Regular, Menlo, Monaco, Consolas, monospace",
   },
 });

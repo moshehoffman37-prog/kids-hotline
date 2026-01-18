@@ -6,12 +6,12 @@ import { LoadingScreen } from "@/components/LoadingScreen";
 import LoginScreen from "@/screens/LoginScreen";
 import HomeScreen from "@/screens/HomeScreen";
 import ContentPlayerScreen from "@/screens/ContentPlayerScreen";
-import { ContentItem } from "@/lib/content";
+import * as api from "@/lib/api";
 
 export type RootStackParamList = {
   Login: undefined;
   Home: undefined;
-  ContentPlayer: { item: ContentItem };
+  ContentPlayer: { item: api.ContentItem };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();

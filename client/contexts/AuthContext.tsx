@@ -6,8 +6,14 @@ import React, {
   useCallback,
   ReactNode,
 } from "react";
-import { getStoredAuth, storeAuth, clearAuth, User, AuthState } from "@/lib/auth";
-import { getApiUrl } from "@/lib/query-client";
+import * as api from "@/lib/api";
+
+interface AuthState {
+  isAuthenticated: boolean;
+  user: api.User | null;
+  token: string | null;
+  isLoading: boolean;
+}
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
@@ -30,7 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loadStoredAuth = async () => {
     try {
-      const { token, user } = await getStoredAuth();
+      const { token, user } = await api.getStoredAuth();
       if (token && user) {
         setState({
           isAuthenticated: true,
@@ -52,20 +58,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password: string
     ): Promise<{ success: boolean; error?: string }> => {
       try {
-        const baseUrl = getApiUrl();
-        const response = await fetch(new URL("/api/auth/login", baseUrl).href, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
-        });
+        const data = await api.login(email, password);
 
-        const data = await response.json();
-
-        if (!response.ok) {
-          return { success: false, error: data.message || "Login failed" };
-        }
-
-        await storeAuth(data.token, data.user);
         setState({
           isAuthenticated: true,
           user: data.user,
@@ -75,17 +69,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         return { success: true };
       } catch (error) {
-        return {
-          success: false,
-          error: "Unable to connect. Please check your internet connection.",
-        };
+        const message = error instanceof Error 
+          ? error.message 
+          : "Unable to connect. Please check your internet connection.";
+        return { success: false, error: message };
       }
     },
     []
   );
 
   const logout = useCallback(async () => {
-    await clearAuth();
+    await api.clearAuth();
     setState({
       isAuthenticated: false,
       user: null,

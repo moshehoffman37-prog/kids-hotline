@@ -2,67 +2,60 @@
 
 ## Overview
 
-Kids' Hotline is a secure content streaming mobile application for families. Parents can provide curated video, audio, and photo content to children without giving them browser access. The app connects to your onetimeonetime.com account and mirrors the website's content structure.
+Kids' Hotline is a secure content streaming mobile application for families. Parents can provide curated video, audio, and document content to children without giving them browser access. The app connects directly to your onetimeonetime.com backend API.
 
-**Key Features:**
+## Features
+
 - Login with existing onetimeonetime.com credentials
-- Browse content by categories (Stories, Mishnayos, One Daf One Daf, Just Kidding Podcast, Documents)
-- Video streaming (Bunny CDN compatible)
-- Audio playback for MP3 files
-- Document/image viewing for JPGs
+- Browse content by categories (auto-detected from your API)
+- Video streaming via Bunny Stream embed URLs
+- Audio playback with streaming endpoint
+- Document/image viewing via pages endpoint
 - Simple logout option in header
 - Links to website for account management and password reset
 
-## User Preferences
+## API Integration
 
-- Keep the app simple - mirror the website's design and functionality
-- Videos stream from Bunny CDN
-- MP3s play as audio with playback controls
-- JPGs display as documents (image viewer)
-- No admin capabilities needed
-- Account creation and password reset redirect to onetimeonetime.com
+The app connects to **https://onetimeonetime.com** with these endpoints:
 
-## System Architecture
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/mobile/login` | POST | Login with {email, password}, returns {token, user} |
+| `/api/mobile/me` | GET | Get current user info |
+| `/api/mobile/refresh-token` | POST | Refresh auth token |
+| `/api/videos` | GET | Get all videos |
+| `/api/audio-files` | GET | Get all audio files |
+| `/api/documents` | GET | Get all documents |
+| `/api/audio-files/:id/stream` | GET | Stream audio file |
+| `/api/documents/:id/pages` | GET | View document pages |
 
-### Frontend (Expo/React Native)
-- **Entry Point**: `client/App.tsx`
-- **Navigation**: `client/navigation/RootStackNavigator.tsx`
-  - Login screen (shown when not authenticated)
-  - Home screen (main content browser)
-  - ContentPlayer screen (video/audio/photo playback)
-- **Auth Context**: `client/contexts/AuthContext.tsx` - manages login state
-- **Theme**: `client/constants/theme.ts` - colors and styling
+All requests after login include `Authorization: Bearer <token>` header.
 
-### Backend (Express.js)
-- **Server**: `server/index.ts` - Express server on port 5000
-- **Routes**: `server/routes.ts` - API endpoints
-  - `POST /api/auth/login` - Authenticate user
-  - `GET /api/content/home` - Get recent, categories, and all content
-  - `GET /api/content/:id` - Get single content item
+## Branding
 
-### Current Demo Users
-For testing, use:
-- Email: `demo@onetimeonetime.com`
-- Password: `demo123`
+- **Primary Color**: #1A2A3A (dark blue)
+- **Accent Color**: #EDE518 (yellow)
+- **Background**: #161616 (dark)
+- **Font**: Open Sans / System
 
 ## Screen Flow
 
-1. **Login Screen** - Email/password login with links to website for:
+1. **Login Screen** - Email/password login with links to:
    - Forgot Password → onetimeonetime.com/forgot-password
    - Create Account → onetimeonetime.com/signup
 
 2. **Home Screen** - After login, shows:
-   - Header with app logo, title, and Logout button
-   - "Recent" section with horizontal scroll
-   - Category filter pills (Stories, Mishnayos, etc.)
+   - Header with One Time One Time logo and Logout button
+   - "Recent" section with latest content
+   - Category filter pills (auto-generated from content)
    - Grid of content cards with thumbnails
 
 3. **Content Player** - Tapping a card opens:
-   - Video player (for video content)
-   - Audio player with controls (for MP3s)
-   - Zoomable image viewer (for documents/photos)
+   - Video: WebView with Bunny Stream embed URL
+   - Audio: Native audio player with play/pause and progress bar
+   - Document: WebView displaying document pages
 
-## Key Files
+## Project Structure
 
 ```
 client/
@@ -74,34 +67,30 @@ client/
 │   └── ContentPlayerScreen.tsx # Media playback
 ├── components/
 │   ├── ContentCard.tsx        # Content thumbnail cards
-│   ├── Input.tsx              # Form input with floating label
-│   └── Button.tsx             # Primary action button
+│   ├── Input.tsx              # Form input
+│   └── Button.tsx             # Primary button
 └── lib/
-    ├── auth.ts                # Auth storage utilities
-    ├── content.ts             # Content/favorites storage
-    └── query-client.ts        # API client configuration
+    └── api.ts                 # API client with auth headers
 
-server/
-├── index.ts                   # Express server setup
-└── routes.ts                  # API routes
+assets/images/
+├── logo.webp                  # One Time One Time logo
+├── icon.png                   # App icon
+└── splash-icon.png            # Splash screen icon
 ```
 
 ## Content Types
 
-| Type | Icon | Player |
-|------|------|--------|
-| video | Play button | expo-av Video player with native controls |
-| audio | Headphones | expo-av Audio with play/pause, progress bar |
-| photo | File text | Zoomable Image viewer |
+| Type | Source | Player |
+|------|--------|--------|
+| video | embedUrl from API | WebView (Bunny Stream) |
+| audio | /api/audio-files/:id/stream | expo-av Audio player |
+| document | /api/documents/:id/pages | WebView |
 
-## Environment Variables
+## User Preferences
 
-- `EXPO_PUBLIC_DOMAIN` - API server domain (auto-set by Replit)
-- `DATABASE_URL` - PostgreSQL connection (for future use)
-
-## TODO: Production Integration
-
-To connect to real onetimeonetime.com backend:
-1. Update `server/routes.ts` to proxy authentication to website API
-2. Fetch real content from Bunny CDN via website API
-3. Map content URLs to proper Bunny CDN streams
+- Keep the app simple - mirror the website's design
+- Videos stream from Bunny CDN via embed URLs
+- MP3s play as audio with playback controls
+- Documents display via pages endpoint
+- No admin capabilities
+- Account creation and password reset redirect to website
