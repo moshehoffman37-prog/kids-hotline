@@ -19,6 +19,7 @@ import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { ThemedText } from "@/components/ThemedText";
+import { ZoomableImage } from "@/components/ZoomableImage";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import * as api from "@/lib/api";
@@ -388,13 +389,10 @@ export default function ContentPlayerScreen() {
       >
         {documentPages.map((pageUrl, index) => (
           <View key={index} style={styles.documentPage}>
-            <Image
-              source={{ 
-                uri: pageUrl,
-                headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
-              }}
+            <ZoomableImage
+              uri={pageUrl}
+              headers={authToken ? { Authorization: `Bearer ${authToken}` } : undefined}
               style={styles.pageImage}
-              contentFit="contain"
             />
             <ThemedText style={[styles.pageNumber, { color: theme.textSecondary }]}>
               Page {index + 1} of {documentPages.length}
