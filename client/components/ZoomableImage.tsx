@@ -1,13 +1,14 @@
-import React from "react";
-import { StyleSheet, Dimensions, Platform, View } from "react-native";
+import React, { useState } from "react";
+import { StyleSheet, Dimensions, Platform, Modal, Pressable, View } from "react-native";
 import { Image, ImageStyle } from "expo-image";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
-  useDerivedValue,
+  runOnJS,
 } from "react-native-reanimated";
+import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/useTheme";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -20,6 +21,8 @@ interface ZoomableImageProps {
 
 export function ZoomableImage({ uri, headers, style }: ZoomableImageProps) {
   const { theme } = useTheme();
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
   const translateX = useSharedValue(0);
@@ -27,7 +30,23 @@ export function ZoomableImage({ uri, headers, style }: ZoomableImageProps) {
   const savedTranslateX = useSharedValue(0);
   const savedTranslateY = useSharedValue(0);
 
-  const isZoomed = useDerivedValue(() => scale.value > 1);
+  const resetZoom = () => {
+    scale.value = withTiming(1);
+    savedScale.value = 1;
+    translateX.value = withTiming(0);
+    translateY.value = withTiming(0);
+    savedTranslateX.value = 0;
+    savedTranslateY.value = 0;
+  };
+
+  const openFullscreen = () => {
+    setIsFullscreen(true);
+  };
+
+  const closeFullscreen = () => {
+    resetZoom();
+    setIsFullscreen(false);
+  };
 
   const pinchGesture = Gesture.Pinch()
     .onUpdate((event) => {
@@ -36,12 +55,7 @@ export function ZoomableImage({ uri, headers, style }: ZoomableImageProps) {
     .onEnd(() => {
       savedScale.value = scale.value;
       if (scale.value <= 1) {
-        scale.value = withTiming(1);
-        savedScale.value = 1;
-        translateX.value = withTiming(0);
-        translateY.value = withTiming(0);
-        savedTranslateX.value = 0;
-        savedTranslateY.value = 0;
+        resetZoom();
       }
     });
 
@@ -61,15 +75,10 @@ export function ZoomableImage({ uri, headers, style }: ZoomableImageProps) {
     .numberOfTaps(2)
     .onEnd(() => {
       if (scale.value > 1) {
-        scale.value = withTiming(1);
-        savedScale.value = 1;
-        translateX.value = withTiming(0);
-        translateY.value = withTiming(0);
-        savedTranslateX.value = 0;
-        savedTranslateY.value = 0;
+        resetZoom();
       } else {
-        scale.value = withTiming(2);
-        savedScale.value = 2;
+        scale.value = withTiming(2.5);
+        savedScale.value = 2.5;
       }
     });
 
@@ -84,12 +93,6 @@ export function ZoomableImage({ uri, headers, style }: ZoomableImageProps) {
       { translateY: translateY.value },
       { scale: scale.value },
     ],
-    zIndex: isZoomed.value ? 1000 : 1,
-  }));
-
-  const overlayStyle = useAnimatedStyle(() => ({
-    opacity: isZoomed.value ? 1 : 0,
-    pointerEvents: isZoomed.value ? "auto" as const : "none" as const,
   }));
 
   if (Platform.OS === "web") {
@@ -103,36 +106,71 @@ export function ZoomableImage({ uri, headers, style }: ZoomableImageProps) {
   }
 
   return (
-    <View style={styles.wrapper}>
-      <Animated.View style={[styles.overlay, { backgroundColor: theme.backgroundRoot }, overlayStyle]} />
-      <GestureDetector gesture={composedGesture}>
-        <Animated.View style={[styles.container, animatedStyle]}>
-          <Image
-            source={{ uri, headers }}
-            style={style}
-            contentFit="contain"
-          />
-        </Animated.View>
-      </GestureDetector>
-    </View>
+    <>
+      <Pressable onPress={openFullscreen}>
+        <Image
+          source={{ uri, headers }}
+          style={style}
+          contentFit="contain"
+        />
+      </Pressable>
+
+      <Modal
+        visible={isFullscreen}
+        animationType="fade"
+        transparent={false}
+        onRequestClose={closeFullscreen}
+      >
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <View style={[styles.modalContainer, { backgroundColor: theme.backgroundRoot }]}>
+            <Pressable
+              onPress={closeFullscreen}
+              style={[styles.closeButton, { backgroundColor: theme.backgroundSecondary }]}
+            >
+              <Feather name="x" size={24} color={theme.text} />
+            </Pressable>
+
+            <GestureDetector gesture={composedGesture}>
+              <Animated.View style={[styles.fullscreenImageContainer, animatedStyle]}>
+                <Image
+                  source={{ uri, headers }}
+                  style={styles.fullscreenImage}
+                  contentFit="contain"
+                />
+              </Animated.View>
+            </GestureDetector>
+          </View>
+        </GestureHandlerRootView>
+      </Modal>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  wrapper: {
-    width: SCREEN_WIDTH,
+  modalContainer: {
+    flex: 1,
+    justifyContent: "center",
     alignItems: "center",
   },
-  container: {
-    width: SCREEN_WIDTH,
-    alignItems: "center",
-  },
-  overlay: {
+  closeButton: {
     position: "absolute",
-    top: -SCREEN_HEIGHT,
-    left: -SCREEN_WIDTH / 2,
-    width: SCREEN_WIDTH * 2,
-    height: SCREEN_HEIGHT * 3,
-    zIndex: 999,
+    top: 50,
+    right: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 100,
+  },
+  fullscreenImageContainer: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  fullscreenImage: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT * 0.8,
   },
 });
