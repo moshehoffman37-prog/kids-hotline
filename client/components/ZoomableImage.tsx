@@ -17,9 +17,10 @@ interface ZoomableImageProps {
   style?: ImageStyle;
   onZoomStart?: () => void;
   onZoomEnd?: () => void;
+  resetKey?: number;
 }
 
-export function ZoomableImage({ uri, headers, style, onZoomStart, onZoomEnd }: ZoomableImageProps) {
+export function ZoomableImage({ uri, headers, style, onZoomStart, onZoomEnd, resetKey }: ZoomableImageProps) {
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
   const translateX = useSharedValue(0);
@@ -27,6 +28,16 @@ export function ZoomableImage({ uri, headers, style, onZoomStart, onZoomEnd }: Z
   const savedTranslateX = useSharedValue(0);
   const savedTranslateY = useSharedValue(0);
   const isZoomed = useSharedValue(false);
+
+  React.useEffect(() => {
+    scale.value = 1;
+    savedScale.value = 1;
+    translateX.value = 0;
+    translateY.value = 0;
+    savedTranslateX.value = 0;
+    savedTranslateY.value = 0;
+    isZoomed.value = false;
+  }, [resetKey]);
 
   const pinchGesture = Gesture.Pinch()
     .onStart(() => {

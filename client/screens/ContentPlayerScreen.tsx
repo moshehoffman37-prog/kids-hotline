@@ -494,6 +494,7 @@ export default function ContentPlayerScreen() {
           uri={pageUrl}
           headers={authToken ? { Authorization: `Bearer ${authToken}` } : undefined}
           style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }}
+          resetKey={currentPageIndex}
         />
       </Pressable>
     );
