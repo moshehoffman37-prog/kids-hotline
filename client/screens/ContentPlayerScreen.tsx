@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -6,7 +6,6 @@ import {
   Pressable,
   Dimensions,
   ActivityIndicator,
-  Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -15,6 +14,7 @@ import { Audio, AVPlaybackStatus } from "expo-av";
 import { WebView } from "react-native-webview";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
@@ -23,6 +23,7 @@ import * as api from "@/lib/api";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const AUTH_TOKEN_KEY = "@onetimeonetime_auth_token";
 
 type ContentPlayerRouteProp = RouteProp<RootStackParamList, "ContentPlayer">;
 
@@ -38,8 +39,25 @@ export default function ContentPlayerScreen() {
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [audioDuration, setAudioDuration] = useState(0);
   const [audioPosition, setAudioPosition] = useState(0);
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const [documentPages, setDocumentPages] = useState<string[]>([]);
 
-  React.useEffect(() => {
+  useEffect(() => {
+    AsyncStorage.getItem(AUTH_TOKEN_KEY).then(setAuthToken);
+  }, []);
+
+  useEffect(() => {
+    if (item.type === "document" && item.pageCount && authToken) {
+      const pages: string[] = [];
+      for (let i = 1; i <= item.pageCount; i++) {
+        pages.push(api.getDocumentPageUrl(item.id, i));
+      }
+      setDocumentPages(pages);
+      setIsLoading(false);
+    }
+  }, [item, authToken]);
+
+  useEffect(() => {
     return () => {
       if (sound) {
         sound.unloadAsync();
@@ -63,7 +81,10 @@ export default function ContentPlayerScreen() {
     if (!sound) {
       try {
         const { sound: newSound } = await Audio.Sound.createAsync(
-          { uri: streamUrl },
+          { 
+            uri: streamUrl,
+            headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
+          },
           { shouldPlay: true },
           onAudioStatusUpdate
         );
@@ -136,17 +157,9 @@ export default function ContentPlayerScreen() {
 
   const renderAudioPlayer = () => (
     <View style={styles.audioContainer}>
-      {item.thumbnailUrl ? (
-        <Image
-          source={{ uri: item.thumbnailUrl }}
-          style={styles.audioThumbnail}
-          contentFit="cover"
-        />
-      ) : (
-        <View style={[styles.audioThumbnailPlaceholder, { backgroundColor: theme.backgroundSecondary }]}>
-          <Feather name="headphones" size={64} color={theme.accent} />
-        </View>
-      )}
+      <View style={[styles.audioThumbnailPlaceholder, { backgroundColor: theme.backgroundSecondary }]}>
+        <Feather name="headphones" size={64} color={theme.accent} />
+      </View>
       <View style={styles.audioControls}>
         <Pressable
           onPress={handleAudioPlayPause}
@@ -188,22 +201,38 @@ export default function ContentPlayerScreen() {
   );
 
   const renderDocumentViewer = () => {
-    const pagesUrl = api.getDocumentPagesUrl(item.id);
-    
+    if (isLoading || documentPages.length === 0) {
+      return (
+        <View style={[styles.loadingContainer, { backgroundColor: theme.backgroundSecondary }]}>
+          <ActivityIndicator size="large" color={theme.accent} />
+          <ThemedText style={[styles.loadingText, { color: theme.textSecondary }]}>
+            Loading document...
+          </ThemedText>
+        </View>
+      );
+    }
+
     return (
-      <View style={styles.documentContainer}>
-        {isLoading ? (
-          <View style={[styles.loadingOverlay, { backgroundColor: theme.backgroundSecondary }]}>
-            <ActivityIndicator size="large" color={theme.accent} />
+      <ScrollView 
+        style={styles.documentScrollView}
+        contentContainerStyle={styles.documentContent}
+      >
+        {documentPages.map((pageUrl, index) => (
+          <View key={index} style={styles.documentPage}>
+            <Image
+              source={{ 
+                uri: pageUrl,
+                headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
+              }}
+              style={styles.pageImage}
+              contentFit="contain"
+            />
+            <ThemedText style={[styles.pageNumber, { color: theme.textSecondary }]}>
+              Page {index + 1} of {documentPages.length}
+            </ThemedText>
           </View>
-        ) : null}
-        <WebView
-          source={{ uri: pagesUrl }}
-          style={styles.webview}
-          onLoadEnd={() => setIsLoading(false)}
-          scalesPageToFit
-        />
-      </View>
+        ))}
+      </ScrollView>
     );
   };
 
@@ -326,6 +355,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     zIndex: 1,
   },
+  loadingContainer: {
+    width: SCREEN_WIDTH,
+    height: 200,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: Spacing.md,
+    fontSize: 14,
+  },
   errorContainer: {
     width: SCREEN_WIDTH,
     height: SCREEN_WIDTH * 9 / 16,
@@ -340,15 +379,10 @@ const styles = StyleSheet.create({
     padding: Spacing.xl,
     alignItems: "center",
   },
-  audioThumbnail: {
-    width: SCREEN_WIDTH - Spacing.xl * 2,
-    height: SCREEN_WIDTH - Spacing.xl * 2,
-    borderRadius: BorderRadius.lg,
-    marginBottom: Spacing.xl,
-  },
   audioThumbnailPlaceholder: {
     width: SCREEN_WIDTH - Spacing.xl * 2,
     height: SCREEN_WIDTH - Spacing.xl * 2,
+    maxHeight: 300,
     borderRadius: BorderRadius.lg,
     marginBottom: Spacing.xl,
     justifyContent: "center",
@@ -386,9 +420,23 @@ const styles = StyleSheet.create({
   timeText: {
     fontSize: 12,
   },
-  documentContainer: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT * 0.6,
+  documentScrollView: {
+    flex: 1,
+  },
+  documentContent: {
+    paddingVertical: Spacing.lg,
+  },
+  documentPage: {
+    marginBottom: Spacing.lg,
+    alignItems: "center",
+  },
+  pageImage: {
+    width: SCREEN_WIDTH - Spacing.lg * 2,
+    height: (SCREEN_WIDTH - Spacing.lg * 2) * 1.4,
+  },
+  pageNumber: {
+    marginTop: Spacing.sm,
+    fontSize: 12,
   },
   infoSection: {
     padding: Spacing.xl,

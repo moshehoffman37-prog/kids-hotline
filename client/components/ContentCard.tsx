@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { StyleSheet, View, Pressable, Dimensions } from "react-native";
 import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
@@ -18,6 +18,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 export function ContentCard({ item, onPress, size = "medium" }: ContentCardProps) {
   const { theme } = useTheme();
+  const [imageError, setImageError] = useState(false);
 
   const cardWidth = size === "small" 
     ? 140
@@ -27,7 +28,7 @@ export function ContentCard({ item, onPress, size = "medium" }: ContentCardProps
 
   const cardHeight = size === "large" ? 200 : size === "small" ? 90 : 120;
 
-  const formatDuration = (seconds?: number) => {
+  const formatDuration = (seconds?: number | null) => {
     if (!seconds) return null;
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -47,6 +48,9 @@ export function ContentCard({ item, onPress, size = "medium" }: ContentCardProps
     }
   };
 
+  const thumbnailUrl = item.thumbnailUrl;
+  const showPlaceholder = !thumbnailUrl || imageError;
+
   return (
     <Pressable
       onPress={onPress}
@@ -62,17 +66,18 @@ export function ContentCard({ item, onPress, size = "medium" }: ContentCardProps
       ]}
     >
       <View style={[styles.imageContainer, { height: cardHeight, borderRadius: BorderRadius.xs }]}>
-        {item.thumbnailUrl ? (
-          <Image
-            source={{ uri: item.thumbnailUrl }}
-            style={[styles.image, { borderRadius: BorderRadius.xs }]}
-            contentFit="cover"
-            transition={200}
-          />
-        ) : (
+        {showPlaceholder ? (
           <View style={[styles.placeholderImage, { backgroundColor: theme.backgroundSecondary, borderRadius: BorderRadius.xs }]}>
             <Feather name={getTypeIcon()} size={32} color={theme.textSecondary} />
           </View>
+        ) : (
+          <Image
+            source={{ uri: thumbnailUrl }}
+            style={[styles.image, { borderRadius: BorderRadius.xs }]}
+            contentFit="cover"
+            transition={200}
+            onError={() => setImageError(true)}
+          />
         )}
         {item.duration ? (
           <View style={styles.duration}>
@@ -81,16 +86,16 @@ export function ContentCard({ item, onPress, size = "medium" }: ContentCardProps
             </ThemedText>
           </View>
         ) : null}
-        {item.type === "audio" ? (
-          <View style={styles.typeIcon}>
-            <Feather name="headphones" size={16} color="#FFFFFF" />
+        {item.pageCount ? (
+          <View style={styles.duration}>
+            <ThemedText style={styles.durationText}>
+              {item.pageCount} pages
+            </ThemedText>
           </View>
         ) : null}
-        {item.type === "document" ? (
-          <View style={styles.typeIcon}>
-            <Feather name="file-text" size={16} color="#FFFFFF" />
-          </View>
-        ) : null}
+        <View style={styles.typeIcon}>
+          <Feather name={getTypeIcon()} size={16} color="#FFFFFF" />
+        </View>
       </View>
       <ThemedText
         numberOfLines={2}

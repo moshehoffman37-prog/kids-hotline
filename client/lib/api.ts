@@ -19,32 +19,32 @@ export interface VideoCategory {
 export interface VideoItem {
   id: string;
   title: string;
-  description?: string;
-  thumbnailUrl?: string;
-  embedUrl: string;
-  duration?: number;
+  description?: string | null;
+  thumbnailUrl?: string | null;
+  embedUrl?: string | null;
+  bunnyGuid?: string | null;
+  categoryId?: string | null;
+  status?: string;
+  duration?: number | null;
   createdAt?: string;
-  categoryId?: string;
 }
 
 export interface AudioItem {
   id: string;
-  title: string;
-  description?: string;
-  thumbnailUrl?: string;
-  duration?: number;
+  name: string;
+  type?: string;
+  duration?: number | null;
   createdAt?: string;
-  category?: string;
 }
 
 export interface DocumentItem {
   id: string;
   title: string;
-  description?: string;
-  thumbnailUrl?: string;
+  description?: string | null;
+  status?: string;
   pageCount?: number;
+  allowDownload?: boolean;
   createdAt?: string;
-  category?: string;
 }
 
 export type ContentType = "video" | "audio" | "document";
@@ -52,14 +52,14 @@ export type ContentType = "video" | "audio" | "document";
 export interface ContentItem {
   id: string;
   title: string;
-  description?: string;
+  description?: string | null;
   type: ContentType;
-  thumbnailUrl?: string;
-  embedUrl?: string;
-  duration?: number;
+  thumbnailUrl?: string | null;
+  embedUrl?: string | null;
+  duration?: number | null;
   pageCount?: number;
   category?: string;
-  categoryId?: string;
+  categoryId?: string | null;
   createdAt?: string;
 }
 
@@ -180,12 +180,16 @@ export async function getDocuments(): Promise<DocumentItem[]> {
   return makeRequest<DocumentItem[]>("/api/documents");
 }
 
+export function getVideoThumbnailUrl(videoId: string): string {
+  return `${API_BASE_URL}/api/videos/${videoId}/thumbnail`;
+}
+
 export function getAudioStreamUrl(audioId: string): string {
   return `${API_BASE_URL}/api/audio-files/${audioId}/stream`;
 }
 
-export function getDocumentPagesUrl(documentId: string): string {
-  return `${API_BASE_URL}/api/documents/${documentId}/pages`;
+export function getDocumentPageUrl(documentId: string, pageNumber: number): string {
+  return `${API_BASE_URL}/api/documents/${documentId}/page/${pageNumber}`;
 }
 
 function formatCategoryName(category: string): string {
@@ -227,7 +231,7 @@ export async function getContentByCategories(): Promise<CategorySection[]> {
         title: v.title,
         description: v.description,
         type: "video" as ContentType,
-        thumbnailUrl: v.thumbnailUrl,
+        thumbnailUrl: v.thumbnailUrl || getVideoThumbnailUrl(v.id),
         embedUrl: v.embedUrl,
         duration: v.duration,
         categoryId: v.categoryId,
@@ -238,7 +242,7 @@ export async function getContentByCategories(): Promise<CategorySection[]> {
 
   const audioByCategory = new Map<string, AudioItem[]>();
   audioFiles.forEach((audio) => {
-    const category = audio.category || "other";
+    const category = audio.type || "other";
     if (!audioByCategory.has(category)) {
       audioByCategory.set(category, []);
     }
@@ -252,43 +256,28 @@ export async function getContentByCategories(): Promise<CategorySection[]> {
       type: "audio",
       items: categoryAudio.map((a) => ({
         id: a.id,
-        title: a.title,
-        description: a.description,
+        title: a.name,
         type: "audio" as ContentType,
-        thumbnailUrl: a.thumbnailUrl,
         duration: a.duration,
-        category: a.category,
+        category: a.type,
         createdAt: a.createdAt,
       })),
     });
   });
 
   if (documents.length > 0) {
-    const docsByCategory = new Map<string, DocumentItem[]>();
-    documents.forEach((doc) => {
-      const category = doc.category || "Documents";
-      if (!docsByCategory.has(category)) {
-        docsByCategory.set(category, []);
-      }
-      docsByCategory.get(category)!.push(doc);
-    });
-
-    docsByCategory.forEach((categoryDocs, category) => {
-      sections.push({
-        id: `doc-${category}`,
-        name: formatCategoryName(category),
-        type: "document",
-        items: categoryDocs.map((d) => ({
-          id: d.id,
-          title: d.title,
-          description: d.description,
-          type: "document" as ContentType,
-          thumbnailUrl: d.thumbnailUrl,
-          pageCount: d.pageCount,
-          category: d.category,
-          createdAt: d.createdAt,
-        })),
-      });
+    sections.push({
+      id: "documents",
+      name: "Documents",
+      type: "document",
+      items: documents.map((d) => ({
+        id: d.id,
+        title: d.title,
+        description: d.description,
+        type: "document" as ContentType,
+        pageCount: d.pageCount,
+        createdAt: d.createdAt,
+      })),
     });
   }
 
