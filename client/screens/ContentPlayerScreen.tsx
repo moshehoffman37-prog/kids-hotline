@@ -60,7 +60,9 @@ export default function ContentPlayerScreen() {
       setIsLoading(true);
       setVideoError(null);
       
-      api.markVideoViewed(item.id).catch(() => {});
+      api.markVideoViewed(item.id).catch((error) => {
+        console.log("Failed to mark as viewed:", error);
+      });
       
       api.getStreamUrl(item.id)
         .then((response) => {

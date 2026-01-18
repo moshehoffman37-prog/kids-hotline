@@ -214,9 +214,28 @@ export async function getStreamUrl(itemId: string): Promise<StreamResponse> {
 }
 
 export async function markVideoViewed(videoId: string): Promise<void> {
-  await makeRequest<void>(`/api/videos/${videoId}/mark-viewed`, {
-    method: "POST",
-  });
+  const token = await getAuthToken();
+  
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/videos/${videoId}/mark-viewed`, {
+      method: "POST",
+      headers,
+    });
+    
+    if (!response.ok && response.status !== 204) {
+      console.log("Mark viewed response:", response.status);
+    }
+  } catch (error) {
+    console.log("Mark viewed error:", error);
+  }
 }
 
 export function isVideoNew(video: VideoItem): boolean {
