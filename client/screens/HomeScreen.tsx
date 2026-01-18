@@ -1,12 +1,10 @@
-import React, { useState, useCallback } from "react";
+import React, { useCallback } from "react";
 import {
   View,
   StyleSheet,
   FlatList,
-  ScrollView,
   RefreshControl,
   Pressable,
-  Dimensions,
   ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -25,7 +23,61 @@ import { Spacing, BorderRadius } from "@/constants/theme";
 import * as api from "@/lib/api";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+function CategoryRow({
+  section,
+  onItemPress,
+}: {
+  section: api.CategorySection;
+  onItemPress: (item: api.ContentItem) => void;
+}) {
+  const { theme } = useTheme();
+
+  const getTypeIcon = (): keyof typeof Feather.glyphMap => {
+    switch (section.type) {
+      case "video":
+        return "video";
+      case "audio":
+        return "headphones";
+      case "document":
+        return "file-text";
+      default:
+        return "folder";
+    }
+  };
+
+  return (
+    <View style={styles.categorySection}>
+      <View style={styles.categoryHeader}>
+        <Feather
+          name={getTypeIcon()}
+          size={18}
+          color={theme.accent}
+          style={styles.categoryIcon}
+        />
+        <ThemedText style={[styles.categoryTitle, { color: theme.text }]}>
+          {section.name}
+        </ThemedText>
+        <ThemedText style={[styles.itemCount, { color: theme.textSecondary }]}>
+          {section.items.length}
+        </ThemedText>
+      </View>
+      <FlatList
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        data={section.items}
+        keyExtractor={(item) => `${section.id}-${item.id}`}
+        renderItem={({ item }) => (
+          <ContentCard
+            item={item}
+            onPress={() => onItemPress(item)}
+            size="small"
+          />
+        )}
+        contentContainerStyle={styles.categoryItems}
+      />
+    </View>
+  );
+}
 
 export default function HomeScreen() {
   const { theme } = useTheme();
@@ -33,24 +85,10 @@ export default function HomeScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { logout } = useAuth();
 
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-
-  const { data: content, isLoading, refetch, isRefetching } = useQuery({
-    queryKey: ["all-content"],
-    queryFn: api.getAllContent,
+  const { data: sections, isLoading, refetch, isRefetching } = useQuery({
+    queryKey: ["content-by-categories"],
+    queryFn: api.getContentByCategories,
   });
-
-  const categories = content ? api.getCategories(content) : [];
-  const recent = content?.slice(0, 4) || [];
-  
-  const filteredContent = selectedCategory
-    ? content?.filter((item) => item.category === selectedCategory) || []
-    : content || [];
-
-  const handleCategoryPress = (category: string) => {
-    Haptics.selectionAsync();
-    setSelectedCategory(selectedCategory === category ? null : category);
-  };
 
   const handleContentPress = useCallback(
     (item: api.ContentItem) => {
@@ -63,24 +101,6 @@ export default function HomeScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     await logout();
   };
-
-  const renderRecentItem = ({ item }: { item: api.ContentItem }) => (
-    <ContentCard
-      item={item}
-      onPress={() => handleContentPress(item)}
-      size="small"
-    />
-  );
-
-  const renderContentItem = ({ item }: { item: api.ContentItem }) => (
-    <View style={styles.gridItem}>
-      <ContentCard
-        item={item}
-        onPress={() => handleContentPress(item)}
-        size="medium"
-      />
-    </View>
-  );
 
   if (isLoading) {
     return (
@@ -126,88 +146,21 @@ export default function HomeScreen() {
       </View>
 
       <FlatList
-        data={filteredContent}
-        keyExtractor={(item) => `${item.type}-${item.id}`}
-        numColumns={2}
-        renderItem={renderContentItem}
+        data={sections}
+        keyExtractor={(section) => section.id}
+        renderItem={({ item: section }) => (
+          <CategoryRow section={section} onItemPress={handleContentPress} />
+        )}
         contentContainerStyle={[
           styles.contentList,
           { paddingBottom: insets.bottom + Spacing.xl },
         ]}
-        columnWrapperStyle={styles.columnWrapper}
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
             onRefresh={refetch}
             tintColor={theme.accent}
           />
-        }
-        ListHeaderComponent={
-          <>
-            {recent.length > 0 ? (
-              <View style={styles.recentSection}>
-                <ThemedText style={[styles.sectionTitle, { color: theme.text }]}>
-                  Recent
-                </ThemedText>
-                <FlatList
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  data={recent}
-                  keyExtractor={(item) => `recent-${item.type}-${item.id}`}
-                  renderItem={renderRecentItem}
-                  contentContainerStyle={styles.recentList}
-                />
-              </View>
-            ) : null}
-
-            {categories.length > 0 ? (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.categoriesContainer}
-                contentContainerStyle={styles.categoriesList}
-              >
-                {categories.map((category) => {
-                  const isSelected = selectedCategory === category;
-                  const isDocuments = category.toLowerCase().includes("document");
-                  return (
-                    <Pressable
-                      key={category}
-                      onPress={() => handleCategoryPress(category)}
-                      style={[
-                        styles.categoryPill,
-                        {
-                          backgroundColor: isSelected
-                            ? theme.accent
-                            : theme.backgroundDefault,
-                          borderColor: isSelected
-                            ? theme.accent
-                            : theme.border,
-                        },
-                      ]}
-                    >
-                      {isDocuments ? (
-                        <Feather
-                          name="file-text"
-                          size={14}
-                          color={isSelected ? theme.buttonText : theme.text}
-                          style={styles.categoryIcon}
-                        />
-                      ) : null}
-                      <ThemedText
-                        style={[
-                          styles.categoryText,
-                          { color: isSelected ? theme.buttonText : theme.text },
-                        ]}
-                      >
-                        {category}
-                      </ThemedText>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-            ) : null}
-          </>
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
@@ -257,49 +210,31 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginLeft: Spacing.xs,
   },
-  recentSection: {
-    marginBottom: Spacing.lg,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    paddingHorizontal: Spacing.lg,
-    marginBottom: Spacing.md,
-  },
-  recentList: {
-    paddingHorizontal: Spacing.lg,
-  },
-  categoriesContainer: {
-    marginBottom: Spacing.lg,
-  },
-  categoriesList: {
-    paddingHorizontal: Spacing.lg,
-  },
-  categoryPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1,
-    marginRight: Spacing.sm,
-  },
-  categoryIcon: {
-    marginRight: Spacing.xs,
-  },
-  categoryText: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
   contentList: {
     paddingTop: Spacing.lg,
   },
-  columnWrapper: {
-    paddingHorizontal: Spacing.lg,
-    justifyContent: "space-between",
+  categorySection: {
+    marginBottom: Spacing.xl,
   },
-  gridItem: {
-    width: (SCREEN_WIDTH - Spacing.lg * 3) / 2,
+  categoryHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.lg,
+    marginBottom: Spacing.md,
+  },
+  categoryIcon: {
+    marginRight: Spacing.sm,
+  },
+  categoryTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    flex: 1,
+  },
+  itemCount: {
+    fontSize: 14,
+  },
+  categoryItems: {
+    paddingHorizontal: Spacing.lg,
   },
   emptyContainer: {
     flex: 1,

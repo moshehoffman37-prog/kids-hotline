@@ -11,6 +11,11 @@ export interface User {
   avatarUrl?: string;
 }
 
+export interface VideoCategory {
+  id: string;
+  name: string;
+}
+
 export interface VideoItem {
   id: string;
   title: string;
@@ -19,7 +24,7 @@ export interface VideoItem {
   embedUrl: string;
   duration?: number;
   createdAt?: string;
-  category?: string;
+  categoryId?: string;
 }
 
 export interface AudioItem {
@@ -54,7 +59,15 @@ export interface ContentItem {
   duration?: number;
   pageCount?: number;
   category?: string;
+  categoryId?: string;
   createdAt?: string;
+}
+
+export interface CategorySection {
+  id: string;
+  name: string;
+  type: ContentType;
+  items: ContentItem[];
 }
 
 async function getAuthToken(): Promise<string | null> {
@@ -151,6 +164,10 @@ export async function getUserInfo(): Promise<User> {
   return makeRequest<User>("/api/mobile/me");
 }
 
+export async function getVideoCategories(): Promise<VideoCategory[]> {
+  return makeRequest<VideoCategory[]>("/api/video-categories");
+}
+
 export async function getVideos(): Promise<VideoItem[]> {
   return makeRequest<VideoItem[]>("/api/videos");
 }
@@ -171,62 +188,109 @@ export function getDocumentPagesUrl(documentId: string): string {
   return `${API_BASE_URL}/api/documents/${documentId}/pages`;
 }
 
-export async function getAllContent(): Promise<ContentItem[]> {
-  const [videos, audioFiles, documents] = await Promise.all([
-    getVideos().catch(() => []),
-    getAudioFiles().catch(() => []),
-    getDocuments().catch(() => []),
-  ]);
-
-  const content: ContentItem[] = [
-    ...videos.map((v) => ({
-      id: v.id,
-      title: v.title,
-      description: v.description,
-      type: "video" as ContentType,
-      thumbnailUrl: v.thumbnailUrl,
-      embedUrl: v.embedUrl,
-      duration: v.duration,
-      category: v.category || "Videos",
-      createdAt: v.createdAt,
-    })),
-    ...audioFiles.map((a) => ({
-      id: a.id,
-      title: a.title,
-      description: a.description,
-      type: "audio" as ContentType,
-      thumbnailUrl: a.thumbnailUrl,
-      duration: a.duration,
-      category: a.category || "Audio",
-      createdAt: a.createdAt,
-    })),
-    ...documents.map((d) => ({
-      id: d.id,
-      title: d.title,
-      description: d.description,
-      type: "document" as ContentType,
-      thumbnailUrl: d.thumbnailUrl,
-      pageCount: d.pageCount,
-      category: d.category || "Documents",
-      createdAt: d.createdAt,
-    })),
-  ];
-
-  content.sort((a, b) => {
-    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-    return dateB - dateA;
-  });
-
-  return content;
+function formatCategoryName(category: string): string {
+  return category
+    .split(/[-_]/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
 }
 
-export function getCategories(content: ContentItem[]): string[] {
-  const categories = new Set<string>();
-  content.forEach((item) => {
-    if (item.category) {
-      categories.add(item.category);
+export async function getContentByCategories(): Promise<CategorySection[]> {
+  const [videoCategories, videos, audioFiles, documents] = await Promise.all([
+    getVideoCategories().catch(() => [] as VideoCategory[]),
+    getVideos().catch(() => [] as VideoItem[]),
+    getAudioFiles().catch(() => [] as AudioItem[]),
+    getDocuments().catch(() => [] as DocumentItem[]),
+  ]);
+
+  const sections: CategorySection[] = [];
+
+  const categoryMap = new Map(videoCategories.map((c) => [c.id, c.name]));
+  
+  const videosByCategory = new Map<string, VideoItem[]>();
+  videos.forEach((video) => {
+    const catId = video.categoryId || "uncategorized";
+    if (!videosByCategory.has(catId)) {
+      videosByCategory.set(catId, []);
     }
+    videosByCategory.get(catId)!.push(video);
   });
-  return Array.from(categories);
+
+  videosByCategory.forEach((categoryVideos, categoryId) => {
+    const categoryName = categoryMap.get(categoryId) || formatCategoryName(categoryId);
+    sections.push({
+      id: `video-${categoryId}`,
+      name: categoryName,
+      type: "video",
+      items: categoryVideos.map((v) => ({
+        id: v.id,
+        title: v.title,
+        description: v.description,
+        type: "video" as ContentType,
+        thumbnailUrl: v.thumbnailUrl,
+        embedUrl: v.embedUrl,
+        duration: v.duration,
+        categoryId: v.categoryId,
+        createdAt: v.createdAt,
+      })),
+    });
+  });
+
+  const audioByCategory = new Map<string, AudioItem[]>();
+  audioFiles.forEach((audio) => {
+    const category = audio.category || "other";
+    if (!audioByCategory.has(category)) {
+      audioByCategory.set(category, []);
+    }
+    audioByCategory.get(category)!.push(audio);
+  });
+
+  audioByCategory.forEach((categoryAudio, category) => {
+    sections.push({
+      id: `audio-${category}`,
+      name: formatCategoryName(category),
+      type: "audio",
+      items: categoryAudio.map((a) => ({
+        id: a.id,
+        title: a.title,
+        description: a.description,
+        type: "audio" as ContentType,
+        thumbnailUrl: a.thumbnailUrl,
+        duration: a.duration,
+        category: a.category,
+        createdAt: a.createdAt,
+      })),
+    });
+  });
+
+  if (documents.length > 0) {
+    const docsByCategory = new Map<string, DocumentItem[]>();
+    documents.forEach((doc) => {
+      const category = doc.category || "Documents";
+      if (!docsByCategory.has(category)) {
+        docsByCategory.set(category, []);
+      }
+      docsByCategory.get(category)!.push(doc);
+    });
+
+    docsByCategory.forEach((categoryDocs, category) => {
+      sections.push({
+        id: `doc-${category}`,
+        name: formatCategoryName(category),
+        type: "document",
+        items: categoryDocs.map((d) => ({
+          id: d.id,
+          title: d.title,
+          description: d.description,
+          type: "document" as ContentType,
+          thumbnailUrl: d.thumbnailUrl,
+          pageCount: d.pageCount,
+          category: d.category,
+          createdAt: d.createdAt,
+        })),
+      });
+    });
+  }
+
+  return sections;
 }
