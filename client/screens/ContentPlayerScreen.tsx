@@ -260,22 +260,43 @@ export default function ContentPlayerScreen() {
       );
     }
 
+    const videoHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
+            iframe { width: 100%; height: 100%; border: none; }
+          </style>
+        </head>
+        <body>
+          <iframe
+            src="${videoEmbedUrl}"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+            allowfullscreen
+          ></iframe>
+        </body>
+      </html>
+    `;
+
     return (
       <View style={styles.videoContainer}>
         <WebView
-          source={{ uri: videoEmbedUrl }}
+          source={{ html: videoHtml, baseUrl: "https://iframe.mediadelivery.net" }}
           style={styles.webview}
           allowsFullscreenVideo
           allowsInlineMediaPlayback
           mediaPlaybackRequiresUserAction={false}
           javaScriptEnabled
           domStorageEnabled
-          scalesPageToFit
           bounces={false}
           scrollEnabled={false}
           startInLoadingState
           originWhitelist={["*"]}
           mixedContentMode="always"
+          userAgent="Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
           onError={(syntheticEvent) => {
             const { nativeEvent } = syntheticEvent;
             console.log("WebView error:", nativeEvent);
