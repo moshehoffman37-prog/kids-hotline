@@ -4,8 +4,9 @@ import {
   StyleSheet,
   Modal,
   Pressable,
-  Alert,
   ScrollView,
+  Platform,
+  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -38,6 +39,7 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
   const insets = useSafeAreaInsets();
   const { accentColorName, setAccentColor } = useSettings();
   const { logout } = useAuth();
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
 
   const handleColorSelect = (colorName: AccentColorName) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -46,24 +48,34 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
 
   const handleSignOut = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert(
-      "Sign Out",
-      "You are about to sign out. You will need to enter your password again to access your content.",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Sign Out",
-          style: "destructive",
-          onPress: async () => {
-            onClose();
-            await logout();
+    if (Platform.OS === "web") {
+      setShowSignOutConfirm(true);
+    } else {
+      Alert.alert(
+        "Sign Out",
+        "You are about to sign out. You will need to enter your password again to access your content.",
+        [
+          {
+            text: "Cancel",
+            style: "cancel",
           },
-        },
-      ]
-    );
+          {
+            text: "Sign Out",
+            style: "destructive",
+            onPress: async () => {
+              onClose();
+              await logout();
+            },
+          },
+        ]
+      );
+    }
+  };
+
+  const confirmSignOut = async () => {
+    setShowSignOutConfirm(false);
+    onClose();
+    await logout();
   };
 
   return (
@@ -163,6 +175,37 @@ export function SettingsModal({ visible, onClose }: SettingsModalProps) {
           </View>
         </ScrollView>
       </View>
+
+      {showSignOutConfirm ? (
+        <View style={[styles.confirmOverlay, { backgroundColor: theme.overlay }]}>
+          <View style={[styles.confirmBox, { backgroundColor: theme.backgroundDefault }]}>
+            <ThemedText style={[styles.confirmTitle, { color: theme.text }]}>
+              Sign Out
+            </ThemedText>
+            <ThemedText style={[styles.confirmMessage, { color: theme.textSecondary }]}>
+              You are about to sign out. You will need to enter your password again to access your content.
+            </ThemedText>
+            <View style={styles.confirmButtons}>
+              <Pressable
+                onPress={() => setShowSignOutConfirm(false)}
+                style={[styles.confirmButton, { backgroundColor: theme.backgroundSecondary }]}
+              >
+                <ThemedText style={[styles.confirmButtonText, { color: theme.text }]}>
+                  Cancel
+                </ThemedText>
+              </Pressable>
+              <Pressable
+                onPress={confirmSignOut}
+                style={[styles.confirmButton, { backgroundColor: theme.destructive }]}
+              >
+                <ThemedText style={[styles.confirmButtonText, { color: "#FFFFFF" }]}>
+                  Sign Out
+                </ThemedText>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      ) : null}
     </Modal>
   );
 }
@@ -243,5 +286,43 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     marginLeft: Spacing.sm,
+  },
+  confirmOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: Spacing.xl,
+  },
+  confirmBox: {
+    width: "100%",
+    maxWidth: 320,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.xl,
+  },
+  confirmTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: Spacing.sm,
+    textAlign: "center",
+  },
+  confirmMessage: {
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: "center",
+    marginBottom: Spacing.xl,
+  },
+  confirmButtons: {
+    flexDirection: "row",
+    gap: Spacing.md,
+  },
+  confirmButton: {
+    flex: 1,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+    alignItems: "center",
+  },
+  confirmButtonText: {
+    fontSize: 15,
+    fontWeight: "600",
   },
 });
