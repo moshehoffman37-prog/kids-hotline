@@ -6,12 +6,14 @@ import { LoadingScreen } from "@/components/LoadingScreen";
 import LoginScreen from "@/screens/LoginScreen";
 import HomeScreen from "@/screens/HomeScreen";
 import ContentPlayerScreen from "@/screens/ContentPlayerScreen";
+import AlbumDetailScreen from "@/screens/AlbumDetailScreen";
 import * as api from "@/lib/api";
 
 export type RootStackParamList = {
   Login: undefined;
   Home: undefined;
   ContentPlayer: { item: api.ContentItem };
+  AlbumDetail: { item: api.ContentItem };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -31,6 +33,13 @@ export default function RootStackNavigator() {
           <Stack.Screen
             name="ContentPlayer"
             component={ContentPlayerScreen}
+            options={{
+              animation: "slide_from_right",
+            }}
+          />
+          <Stack.Screen
+            name="AlbumDetail"
+            component={AlbumDetailScreen}
             options={{
               animation: "slide_from_right",
             }}

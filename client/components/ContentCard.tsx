@@ -53,6 +53,8 @@ export function ContentCard({ item, onPress, size = "medium" }: ContentCardProps
         return "headphones";
       case "document":
         return "file-text";
+      case "album":
+        return "disc";
       default:
         return "file";
     }
@@ -108,6 +110,13 @@ export function ContentCard({ item, onPress, size = "medium" }: ContentCardProps
           <View style={styles.duration}>
             <ThemedText style={styles.durationText}>
               {item.pageCount} pages
+            </ThemedText>
+          </View>
+        ) : null}
+        {item.trackCount ? (
+          <View style={styles.duration}>
+            <ThemedText style={styles.durationText}>
+              {item.trackCount} tracks
             </ThemedText>
           </View>
         ) : null}

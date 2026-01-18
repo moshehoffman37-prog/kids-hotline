@@ -82,7 +82,11 @@ export default function HomeScreen() {
 
   const handleContentPress = useCallback(
     (item: api.ContentItem) => {
-      navigation.navigate("ContentPlayer", { item });
+      if (item.type === "album") {
+        navigation.navigate("AlbumDetail", { item });
+      } else {
+        navigation.navigate("ContentPlayer", { item });
+      }
     },
     [navigation]
   );

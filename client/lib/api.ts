@@ -64,7 +64,23 @@ export interface DocumentItem {
   createdAt?: string;
 }
 
-export type ContentType = "video" | "audio" | "document";
+export interface AlbumTrack {
+  id: string;
+  title: string;
+  trackNumber: number;
+  duration?: number | null;
+}
+
+export interface AlbumItem {
+  id: string;
+  title: string;
+  description?: string | null;
+  trackCount?: number;
+  tracks?: AlbumTrack[];
+  createdAt?: string;
+}
+
+export type ContentType = "video" | "audio" | "document" | "album";
 
 export interface ContentItem {
   id: string;
@@ -76,6 +92,7 @@ export interface ContentItem {
   embedUrl?: string | null;
   duration?: number | null;
   pageCount?: number;
+  trackCount?: number;
   category?: string;
   categoryId?: string | null;
   createdAt?: string;
@@ -225,6 +242,25 @@ export async function getDocuments(): Promise<DocumentItem[]> {
   return makeRequest<DocumentItem[]>("/api/documents");
 }
 
+export async function getAlbums(): Promise<AlbumItem[]> {
+  return makeRequest<AlbumItem[]>("/api/albums");
+}
+
+export async function getAlbumById(albumId: string): Promise<AlbumItem> {
+  return makeRequest<AlbumItem>(`/api/albums/${albumId}`);
+}
+
+export function getAlbumThumbnailUrl(albumId: string): { url: string; requiresAuth: boolean } {
+  return {
+    url: `${API_BASE_URL}/api/albums/${albumId}/thumbnail`,
+    requiresAuth: true,
+  };
+}
+
+export function getAlbumTrackStreamUrl(albumId: string, trackId: string): string {
+  return `${API_BASE_URL}/api/albums/${albumId}/tracks/${trackId}/stream`;
+}
+
 export function getVideoThumbnailUrl(video: VideoItem): { url: string | null; requiresAuth: boolean } {
   if (video.thumbnailPath) {
     return {
@@ -326,9 +362,10 @@ function formatCategoryName(category: string): string {
 }
 
 export async function getContentByCategories(): Promise<CategorySection[]> {
-  const [videoCategories, allContent, documents, locallyViewed] = await Promise.all([
+  const [videoCategories, allContent, albums, documents, locallyViewed] = await Promise.all([
     getVideoCategories().catch(() => [] as VideoCategory[]),
     getVideos().catch(() => [] as VideoItem[]),
+    getAlbums().catch(() => [] as AlbumItem[]),
     getDocuments().catch(() => [] as DocumentItem[]),
     getLocalViewedContent(),
   ]);
@@ -370,6 +407,27 @@ export async function getContentByCategories(): Promise<CategorySection[]> {
       }),
     });
   });
+
+  if (albums.length > 0) {
+    sections.push({
+      id: "albums",
+      name: "Albums",
+      type: "album",
+      items: albums.map((album) => {
+        const thumb = getAlbumThumbnailUrl(album.id);
+        return {
+          id: album.id,
+          title: album.title,
+          description: album.description,
+          type: "album" as ContentType,
+          thumbnailUrl: thumb.url,
+          thumbnailRequiresAuth: thumb.requiresAuth,
+          trackCount: album.trackCount,
+          createdAt: album.createdAt,
+        };
+      }),
+    });
+  }
 
   if (documents.length > 0) {
     sections.push({
