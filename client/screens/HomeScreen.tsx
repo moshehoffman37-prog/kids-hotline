@@ -38,7 +38,14 @@ export default function HomeScreen() {
     const padding = Spacing.lg * 2;
     const gap = Spacing.xs * 2;
     const availableWidth = windowWidth - padding;
-    const numColumns = windowWidth >= 768 ? (windowWidth >= 1024 ? 4 : 3) : 2;
+    let numColumns = 3;
+    if (windowWidth < 400) {
+      numColumns = 2;
+    } else if (windowWidth >= 1024) {
+      numColumns = 5;
+    } else if (windowWidth >= 768) {
+      numColumns = 4;
+    }
     const cardWidth = (availableWidth - gap * (numColumns - 1)) / numColumns;
     return { numColumns, cardWidth };
   }, [windowWidth]);
