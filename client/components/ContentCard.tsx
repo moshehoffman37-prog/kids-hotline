@@ -81,7 +81,7 @@ export function ContentCard({ item, onPress, size = "medium", cardWidth: propCar
         },
       ]}
     >
-      <View style={[styles.imageContainer, { height: cardHeight, aspectRatio: size === "medium" && !propCardWidth ? 1 : undefined, borderRadius: BorderRadius.xs }]}>
+      <View style={[styles.imageContainer, { height: cardHeight, aspectRatio: size === "medium" && !propCardWidth ? 4/3 : (propCardWidth ? 1 : undefined), borderRadius: BorderRadius.xs }]}>
         {showPlaceholder ? (
           <View style={[styles.placeholderImage, { backgroundColor: theme.backgroundSecondary, borderRadius: BorderRadius.xs }]}>
             <Feather name={getTypeIcon()} size={32} color={theme.textSecondary} />
