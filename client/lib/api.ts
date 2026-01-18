@@ -20,13 +20,18 @@ export interface VideoItem {
   id: string;
   title: string;
   description?: string | null;
-  thumbnailUrl?: string | null;
-  embedUrl?: string | null;
+  thumbnailPath?: string | null;
+  bunnyThumbnailUrl?: string | null;
   bunnyGuid?: string | null;
   categoryId?: string | null;
   status?: string;
   duration?: number | null;
   createdAt?: string;
+}
+
+export interface VideoStreamResponse {
+  bunny?: boolean;
+  embedUrl?: string;
 }
 
 export interface AudioItem {
@@ -180,8 +185,21 @@ export async function getDocuments(): Promise<DocumentItem[]> {
   return makeRequest<DocumentItem[]>("/api/documents");
 }
 
-export function getVideoThumbnailUrl(videoId: string): string {
-  return `${API_BASE_URL}/api/videos/${videoId}/thumbnail`;
+export function getVideoThumbnailUrl(video: VideoItem): string {
+  if (video.thumbnailPath) {
+    return `${API_BASE_URL}${video.thumbnailPath}`;
+  }
+  if (video.bunnyThumbnailUrl) {
+    return video.bunnyThumbnailUrl;
+  }
+  if (video.bunnyGuid) {
+    return `https://vz-b4f3c875-a3e.b-cdn.net/${video.bunnyGuid}/thumbnail.jpg`;
+  }
+  return `${API_BASE_URL}/api/videos/${video.id}/thumbnail`;
+}
+
+export async function getVideoStreamUrl(videoId: string): Promise<VideoStreamResponse> {
+  return makeRequest<VideoStreamResponse>(`/api/videos/${videoId}/stream`);
 }
 
 export function getAudioStreamUrl(audioId: string): string {
@@ -231,8 +249,7 @@ export async function getContentByCategories(): Promise<CategorySection[]> {
         title: v.title,
         description: v.description,
         type: "video" as ContentType,
-        thumbnailUrl: v.thumbnailUrl || getVideoThumbnailUrl(v.id),
-        embedUrl: v.embedUrl,
+        thumbnailUrl: getVideoThumbnailUrl(v),
         duration: v.duration,
         categoryId: v.categoryId,
         createdAt: v.createdAt,

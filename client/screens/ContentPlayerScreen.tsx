@@ -41,10 +41,32 @@ export default function ContentPlayerScreen() {
   const [audioPosition, setAudioPosition] = useState(0);
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [documentPages, setDocumentPages] = useState<string[]>([]);
+  const [videoEmbedUrl, setVideoEmbedUrl] = useState<string | null>(null);
+  const [videoError, setVideoError] = useState<string | null>(null);
 
   useEffect(() => {
     AsyncStorage.getItem(AUTH_TOKEN_KEY).then(setAuthToken);
   }, []);
+
+  useEffect(() => {
+    if (item.type === "video") {
+      setIsLoading(true);
+      setVideoError(null);
+      api.getVideoStreamUrl(item.id)
+        .then((response) => {
+          if (response.embedUrl) {
+            setVideoEmbedUrl(response.embedUrl);
+          } else {
+            setVideoError("Video stream not available");
+          }
+          setIsLoading(false);
+        })
+        .catch((error) => {
+          setVideoError(error.message || "Failed to load video");
+          setIsLoading(false);
+        });
+    }
+  }, [item]);
 
   useEffect(() => {
     if (item.type === "document" && item.pageCount && authToken) {
@@ -124,12 +146,23 @@ export default function ContentPlayerScreen() {
   };
 
   const renderVideoPlayer = () => {
-    if (!item.embedUrl) {
+    if (isLoading) {
+      return (
+        <View style={[styles.videoContainer, { backgroundColor: theme.backgroundSecondary }]}>
+          <ActivityIndicator size="large" color={theme.accent} />
+          <ThemedText style={[styles.loadingText, { color: theme.textSecondary }]}>
+            Loading video...
+          </ThemedText>
+        </View>
+      );
+    }
+
+    if (videoError || !videoEmbedUrl) {
       return (
         <View style={[styles.errorContainer, { backgroundColor: theme.backgroundSecondary }]}>
           <Feather name="alert-circle" size={32} color={theme.textSecondary} />
           <ThemedText style={[styles.errorText, { color: theme.textSecondary }]}>
-            Video is processing or not yet available
+            {videoError || "Video is processing or not yet available"}
           </ThemedText>
           <ThemedText style={[styles.errorSubtext, { color: theme.textSecondary }]}>
             Please check back later
@@ -140,19 +173,13 @@ export default function ContentPlayerScreen() {
 
     return (
       <View style={styles.videoContainer}>
-        {isLoading ? (
-          <View style={[styles.loadingOverlay, { backgroundColor: theme.backgroundSecondary }]}>
-            <ActivityIndicator size="large" color={theme.accent} />
-          </View>
-        ) : null}
         <WebView
-          source={{ uri: item.embedUrl }}
+          source={{ uri: videoEmbedUrl }}
           style={styles.webview}
           allowsFullscreenVideo
           allowsInlineMediaPlayback
           mediaPlaybackRequiresUserAction={false}
           javaScriptEnabled
-          onLoadEnd={() => setIsLoading(false)}
         />
       </View>
     );
@@ -347,6 +374,8 @@ const styles = StyleSheet.create({
     width: SCREEN_WIDTH,
     height: SCREEN_WIDTH * 9 / 16,
     backgroundColor: "#000000",
+    justifyContent: "center",
+    alignItems: "center",
   },
   webview: {
     flex: 1,
