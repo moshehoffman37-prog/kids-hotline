@@ -158,14 +158,33 @@ export default function ContentPlayerScreen() {
   };
 
   const handleSeek = async (event: GestureResponderEvent) => {
-    if (!sound || audioDuration === 0 || progressBarWidth === 0) return;
+    if (!sound || audioDuration <= 0) return;
     
-    const { locationX } = event.nativeEvent;
-    const percentage = Math.max(0, Math.min(1, locationX / progressBarWidth));
-    const newPosition = percentage * audioDuration;
+    const width = progressBarWidth;
+    if (width <= 0) return;
+    
+    const nativeEvent = event.nativeEvent as any;
+    let locationX = nativeEvent.locationX;
+    
+    if (typeof locationX !== 'number' || isNaN(locationX)) {
+      if (nativeEvent.offsetX !== undefined) {
+        locationX = nativeEvent.offsetX;
+      } else {
+        return;
+      }
+    }
+    
+    const percentage = Math.max(0, Math.min(1, locationX / width));
+    const newPosition = Math.round(percentage * audioDuration);
+    
+    if (isNaN(newPosition) || !isFinite(newPosition) || newPosition < 0) return;
     
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    await sound.setPositionAsync(newPosition);
+    try {
+      await sound.setPositionAsync(newPosition);
+    } catch (error) {
+      console.log("Seek error:", error);
+    }
   };
 
   const handleSpeedChange = async (speed: number) => {
@@ -247,10 +266,12 @@ export default function ContentPlayerScreen() {
               color={theme.buttonText}
             />
           </Pressable>
-          <View style={styles.progressContainer}>
+          <View 
+            style={styles.progressContainer}
+            onLayout={(e) => setProgressBarWidth(e.nativeEvent.layout.width)}
+          >
             <Pressable
               ref={progressBarRef}
-              onLayout={(e) => setProgressBarWidth(e.nativeEvent.layout.width)}
               onPress={handleSeek}
               style={[styles.progressBarTouchable]}
             >
