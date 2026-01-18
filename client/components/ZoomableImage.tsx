@@ -104,7 +104,7 @@ export function ZoomableImage({ uri, headers, style }: ZoomableImageProps) {
 
   return (
     <View style={styles.wrapper}>
-      <Animated.View style={[styles.overlay, { backgroundColor: theme.background }, overlayStyle]} />
+      <Animated.View style={[styles.overlay, { backgroundColor: theme.backgroundRoot }, overlayStyle]} />
       <GestureDetector gesture={composedGesture}>
         <Animated.View style={[styles.container, animatedStyle]}>
           <Image

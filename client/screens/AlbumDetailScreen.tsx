@@ -198,7 +198,7 @@ export default function AlbumDetailScreen() {
 
   const hasThumbnail = item.thumbnailUrl;
   const needsAuth = item.thumbnailRequiresAuth && authToken;
-  const imageSource = hasThumbnail
+  const imageSource = hasThumbnail && item.thumbnailUrl
     ? {
         uri: item.thumbnailUrl,
         headers: needsAuth ? { Authorization: `Bearer ${authToken}` } : undefined,
