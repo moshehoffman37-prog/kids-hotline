@@ -32,10 +32,33 @@ const AUTH_TOKEN_KEY = "@onetimeonetime_auth_token";
 type ContentPlayerRouteProp = RouteProp<RootStackParamList, "ContentPlayer">;
 
 function NativeVideoPlayer({ hlsUrl }: { hlsUrl: string }) {
+  const [error, setError] = useState<string | null>(null);
+  const { theme } = useTheme();
+  
   const player = useVideoPlayer(hlsUrl, (p) => {
     p.loop = false;
     p.play();
   });
+
+  useEffect(() => {
+    const subscription = player.addListener('statusChange', (status) => {
+      if (status.status === 'error') {
+        setError(status.error?.message || 'Video playback failed');
+      }
+    });
+    return () => subscription.remove();
+  }, [player]);
+
+  if (error) {
+    return (
+      <View style={[videoPlayerStyles.container, videoPlayerStyles.errorContainer]}>
+        <Feather name="alert-circle" size={32} color={theme.textSecondary} />
+        <ThemedText style={{ color: theme.textSecondary, marginTop: 8 }}>
+          {error}
+        </ThemedText>
+      </View>
+    );
+  }
 
   return (
     <View style={videoPlayerStyles.container}>
@@ -45,6 +68,7 @@ function NativeVideoPlayer({ hlsUrl }: { hlsUrl: string }) {
         allowsFullscreen
         allowsPictureInPicture
         contentFit="contain"
+        nativeControls
       />
     </View>
   );
@@ -59,6 +83,10 @@ const videoPlayerStyles = StyleSheet.create({
   video: {
     width: "100%",
     height: "100%",
+  },
+  errorContainer: {
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
 
