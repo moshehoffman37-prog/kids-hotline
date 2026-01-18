@@ -70,7 +70,10 @@ export default function ContentPlayerScreen() {
           if (item.type === "audio" && response.cdnUrl) {
             setAudioStreamUrl(response.cdnUrl);
           } else if (item.type === "video" && response.embedUrl) {
-            setVideoEmbedUrl(response.embedUrl);
+            const accentColor = theme.accent.replace("#", "");
+            const separator = response.embedUrl.includes("?") ? "&" : "?";
+            const themedUrl = `${response.embedUrl}${separator}primaryColor=${accentColor}`;
+            setVideoEmbedUrl(themedUrl);
           } else if (item.type === "video") {
             setVideoError("Video stream not available");
           }
@@ -81,7 +84,7 @@ export default function ContentPlayerScreen() {
           setIsLoading(false);
         });
     }
-  }, [item]);
+  }, [item, theme.accent]);
 
   useEffect(() => {
     if (item.type === "document" && item.pageCount && authToken) {
