@@ -65,6 +65,7 @@ export interface ContentItem {
   description?: string | null;
   type: ContentType;
   thumbnailUrl?: string | null;
+  thumbnailRequiresAuth?: boolean;
   embedUrl?: string | null;
   duration?: number | null;
   pageCount?: number;
@@ -191,20 +192,26 @@ export async function getDocuments(): Promise<DocumentItem[]> {
   return makeRequest<DocumentItem[]>("/api/documents");
 }
 
-export function getVideoThumbnailUrl(video: VideoItem): string | null {
+export function getVideoThumbnailUrl(video: VideoItem): { url: string | null; requiresAuth: boolean } {
   if (video.thumbnailPath) {
-    if (video.thumbnailPath.startsWith("http")) {
-      return video.thumbnailPath;
-    }
-    return `${API_BASE_URL}${video.thumbnailPath}`;
+    return {
+      url: `${API_BASE_URL}/api/videos/${video.id}/thumbnail`,
+      requiresAuth: true,
+    };
   }
   if (video.bunnyThumbnailUrl) {
-    return video.bunnyThumbnailUrl;
+    return {
+      url: video.bunnyThumbnailUrl,
+      requiresAuth: false,
+    };
   }
   if (video.bunnyGuid) {
-    return `https://vz-b4f3c875-a3e.b-cdn.net/${video.bunnyGuid}/thumbnail.jpg`;
+    return {
+      url: `https://vz-b4f3c875-a3e.b-cdn.net/${video.bunnyGuid}/thumbnail.jpg`,
+      requiresAuth: false,
+    };
   }
-  return null;
+  return { url: null, requiresAuth: false };
 }
 
 export async function getVideoStreamUrl(videoId: string): Promise<VideoStreamResponse> {
@@ -267,17 +274,21 @@ export async function getContentByCategories(): Promise<CategorySection[]> {
       id: `video-${categoryId}`,
       name: categoryName,
       type: "video",
-      items: categoryVideos.map((v) => ({
-        id: v.id,
-        title: v.title,
-        description: v.description,
-        type: "video" as ContentType,
-        thumbnailUrl: getVideoThumbnailUrl(v),
-        duration: v.duration,
-        categoryId: v.categoryId,
-        createdAt: v.createdAt,
-        isNew: isVideoNew(v),
-      })),
+      items: categoryVideos.map((v) => {
+        const thumb = getVideoThumbnailUrl(v);
+        return {
+          id: v.id,
+          title: v.title,
+          description: v.description,
+          type: "video" as ContentType,
+          thumbnailUrl: thumb.url,
+          thumbnailRequiresAuth: thumb.requiresAuth,
+          duration: v.duration,
+          categoryId: v.categoryId,
+          createdAt: v.createdAt,
+          isNew: isVideoNew(v),
+        };
+      }),
     });
   });
 

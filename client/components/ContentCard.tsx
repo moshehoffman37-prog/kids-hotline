@@ -1,12 +1,15 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { StyleSheet, View, Pressable, Dimensions } from "react-native";
 import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import * as api from "@/lib/api";
+
+const AUTH_TOKEN_KEY = "@onetimeonetime_auth_token";
 
 interface ContentCardProps {
   item: api.ContentItem;
@@ -19,6 +22,13 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 export function ContentCard({ item, onPress, size = "medium" }: ContentCardProps) {
   const { theme } = useTheme();
   const [imageError, setImageError] = useState(false);
+  const [authToken, setAuthToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (item.thumbnailRequiresAuth) {
+      AsyncStorage.getItem(AUTH_TOKEN_KEY).then(setAuthToken);
+    }
+  }, [item.thumbnailRequiresAuth]);
 
   const cardWidth = size === "small" 
     ? 140
@@ -49,7 +59,15 @@ export function ContentCard({ item, onPress, size = "medium" }: ContentCardProps
   };
 
   const thumbnailUrl = item.thumbnailUrl;
-  const showPlaceholder = !thumbnailUrl || imageError;
+  const needsAuth = item.thumbnailRequiresAuth && authToken;
+  const showPlaceholder = !thumbnailUrl || imageError || (item.thumbnailRequiresAuth && !authToken);
+
+  const imageSource = thumbnailUrl
+    ? {
+        uri: thumbnailUrl,
+        headers: needsAuth ? { Authorization: `Bearer ${authToken}` } : undefined,
+      }
+    : undefined;
 
   return (
     <Pressable
@@ -72,7 +90,7 @@ export function ContentCard({ item, onPress, size = "medium" }: ContentCardProps
           </View>
         ) : (
           <Image
-            source={{ uri: thumbnailUrl }}
+            source={imageSource}
             style={[styles.image, { borderRadius: BorderRadius.xs }]}
             contentFit="cover"
             transition={200}
