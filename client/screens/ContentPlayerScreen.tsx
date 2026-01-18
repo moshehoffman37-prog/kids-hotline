@@ -114,6 +114,7 @@ export default function ContentPlayerScreen() {
   const [progressBarWidth, setProgressBarWidth] = useState(0);
   const [zoomedPageIndex, setZoomedPageIndex] = useState<number | null>(null);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
+  const [showDocumentControls, setShowDocumentControls] = useState(true);
 
   const playbackSpeeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
 
@@ -468,35 +469,37 @@ export default function ContentPlayerScreen() {
     );
   };
 
+  const toggleDocumentControls = () => {
+    setShowDocumentControls(!showDocumentControls);
+  };
+
   const renderDocumentViewer = () => {
     if (isLoading || documentPages.length === 0) {
       return (
-        <View style={[styles.loadingContainer, { backgroundColor: theme.backgroundSecondary }]}>
+        <View style={[styles.fullScreenLoading, { backgroundColor: "#000" }]}>
           <ActivityIndicator size="large" color={theme.accent} />
-          <ThemedText style={[styles.loadingText, { color: theme.textSecondary }]}>
+          <ThemedText style={[styles.loadingText, { color: "#fff" }]}>
             Loading document...
           </ThemedText>
         </View>
       );
     }
 
-    const documentHeight = SCREEN_HEIGHT - insets.top - insets.bottom - 120;
-
     const renderDocumentPage = ({ item: pageUrl, index }: { item: string; index: number }) => (
-      <View style={[styles.documentPageFullscreen, { width: SCREEN_WIDTH, height: documentHeight }]}>
+      <Pressable 
+        style={[styles.documentPageFullscreen, { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }]}
+        onPress={toggleDocumentControls}
+      >
         <ZoomableImage
           uri={pageUrl}
           headers={authToken ? { Authorization: `Bearer ${authToken}` } : undefined}
-          style={{ width: SCREEN_WIDTH, height: documentHeight - 40 }}
+          style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }}
         />
-        <ThemedText style={[styles.pageNumberOverlay, { color: theme.textSecondary }]}>
-          {index + 1} / {documentPages.length}
-        </ThemedText>
-      </View>
+      </Pressable>
     );
 
     return (
-      <View style={[styles.documentContainer, { height: documentHeight }]}>
+      <View style={styles.fullScreenDocument}>
         <FlatList
           data={documentPages}
           renderItem={renderDocumentPage}
@@ -514,9 +517,37 @@ export default function ContentPlayerScreen() {
             index,
           })}
         />
+        
+        {showDocumentControls ? (
+          <>
+            <View style={[styles.documentHeader, { paddingTop: insets.top + Spacing.sm }]}>
+              <Pressable
+                onPress={handleBack}
+                style={styles.documentBackButton}
+                hitSlop={8}
+              >
+                <Feather name="arrow-left" size={24} color="#fff" />
+              </Pressable>
+              <ThemedText style={styles.documentTitle} numberOfLines={1}>
+                {item.title}
+              </ThemedText>
+              <View style={{ width: 40 }} />
+            </View>
+            
+            <View style={[styles.documentFooter, { paddingBottom: insets.bottom + Spacing.sm }]}>
+              <ThemedText style={styles.pageCounter}>
+                {currentPageIndex + 1} / {documentPages.length}
+              </ThemedText>
+            </View>
+          </>
+        ) : null}
       </View>
     );
   };
+
+  if (item.type === "document") {
+    return renderDocumentViewer();
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
@@ -554,7 +585,6 @@ export default function ContentPlayerScreen() {
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
         {item.type === "video" ? renderVideoPlayer() : null}
         {item.type === "audio" ? renderAudioPlayer() : null}
-        {item.type === "document" ? renderDocumentViewer() : null}
 
         <View style={styles.infoSection}>
           <ThemedText style={[styles.title, { color: theme.text }]}>
@@ -778,24 +808,55 @@ const styles = StyleSheet.create({
   documentContent: {
     paddingVertical: Spacing.lg,
   },
-  documentContainer: {
+  fullScreenDocument: {
     flex: 1,
+    backgroundColor: "#000",
+  },
+  fullScreenLoading: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   documentPageFullscreen: {
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "#000",
   },
-  pageNumberOverlay: {
+  documentHeader: {
     position: "absolute",
-    bottom: 10,
-    alignSelf: "center",
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.md,
+    backgroundColor: "rgba(0,0,0,0.6)",
+  },
+  documentBackButton: {
+    padding: Spacing.xs,
+    width: 40,
+  },
+  documentTitle: {
+    flex: 1,
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  documentFooter: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+    paddingTop: Spacing.md,
+    backgroundColor: "rgba(0,0,0,0.6)",
+  },
+  pageCounter: {
+    color: "#fff",
     fontSize: 14,
     fontWeight: "500",
-    backgroundColor: "rgba(0,0,0,0.5)",
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-    overflow: "hidden",
   },
   infoSection: {
     padding: Spacing.xl,
