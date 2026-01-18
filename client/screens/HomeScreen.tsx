@@ -37,7 +37,7 @@ export default function HomeScreen() {
     queryFn: api.getContentByCategories,
   });
 
-  const { data: subscription } = useQuery({
+  const { data: subscription, refetch: refetchSubscription } = useQuery({
     queryKey: ["subscription-status"],
     queryFn: api.checkSubscription,
   });
@@ -99,6 +99,11 @@ export default function HomeScreen() {
   const handleUpdateSubscription = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Linking.openURL("https://onetimeonetime.com");
+  };
+
+  const handleRefreshStatus = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    refetchSubscription();
   };
 
   if (isLoading) {
@@ -167,6 +172,18 @@ export default function HomeScreen() {
                 Update Subscription
               </ThemedText>
               <Feather name="external-link" size={16} color={theme.buttonText} style={{ marginLeft: Spacing.sm }} />
+            </Pressable>
+            <Pressable
+              onPress={handleRefreshStatus}
+              style={({ pressed }) => [
+                styles.refreshButton,
+                { borderColor: theme.border, opacity: pressed ? 0.6 : 1 },
+              ]}
+            >
+              <Feather name="refresh-cw" size={16} color={theme.textSecondary} style={{ marginRight: Spacing.sm }} />
+              <ThemedText style={[styles.refreshButtonText, { color: theme.textSecondary }]}>
+                Refresh Status
+              </ThemedText>
             </Pressable>
           </View>
         </View>
@@ -432,5 +449,18 @@ const styles = StyleSheet.create({
   updateButtonText: {
     fontSize: 16,
     fontWeight: "600",
+  },
+  refreshButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    marginTop: Spacing.md,
+  },
+  refreshButtonText: {
+    fontSize: 14,
+    fontWeight: "500",
   },
 });
