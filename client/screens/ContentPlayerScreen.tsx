@@ -253,6 +253,9 @@ export default function ContentPlayerScreen() {
           allowsInlineMediaPlayback
           mediaPlaybackRequiresUserAction={false}
           javaScriptEnabled
+          scalesPageToFit
+          bounces={false}
+          scrollEnabled={false}
         />
       </View>
     );
