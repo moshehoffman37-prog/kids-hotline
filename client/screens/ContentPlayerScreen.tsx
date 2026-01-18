@@ -269,9 +269,27 @@ export default function ContentPlayerScreen() {
           allowsInlineMediaPlayback
           mediaPlaybackRequiresUserAction={false}
           javaScriptEnabled
+          domStorageEnabled
           scalesPageToFit
           bounces={false}
           scrollEnabled={false}
+          startInLoadingState
+          originWhitelist={["*"]}
+          mixedContentMode="always"
+          onError={(syntheticEvent) => {
+            const { nativeEvent } = syntheticEvent;
+            console.log("WebView error:", nativeEvent);
+            setVideoError("Failed to load video player");
+          }}
+          onHttpError={(syntheticEvent) => {
+            const { nativeEvent } = syntheticEvent;
+            console.log("WebView HTTP error:", nativeEvent.statusCode);
+          }}
+          renderLoading={() => (
+            <View style={[StyleSheet.absoluteFill, styles.videoLoading, { backgroundColor: theme.backgroundSecondary }]}>
+              <ActivityIndicator size="large" color={theme.accent} />
+            </View>
+          )}
         />
       </View>
     );
@@ -543,6 +561,10 @@ const styles = StyleSheet.create({
     width: SCREEN_WIDTH,
     height: SCREEN_WIDTH * 9 / 16,
     backgroundColor: "#000000",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  videoLoading: {
     justifyContent: "center",
     alignItems: "center",
   },
