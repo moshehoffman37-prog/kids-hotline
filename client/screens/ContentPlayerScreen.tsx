@@ -482,7 +482,6 @@ export default function ContentPlayerScreen() {
       <ScrollView 
         style={styles.documentScrollView}
         contentContainerStyle={styles.documentContent}
-        scrollEnabled={zoomedPageIndex === null}
       >
         {documentPages.map((pageUrl, index) => {
           const isZoomed = zoomedPageIndex === index;
