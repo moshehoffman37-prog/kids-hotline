@@ -129,7 +129,10 @@ export default function ContentPlayerScreen() {
         <View style={[styles.errorContainer, { backgroundColor: theme.backgroundSecondary }]}>
           <Feather name="alert-circle" size={32} color={theme.textSecondary} />
           <ThemedText style={[styles.errorText, { color: theme.textSecondary }]}>
-            Video not available
+            Video is processing or not yet available
+          </ThemedText>
+          <ThemedText style={[styles.errorSubtext, { color: theme.textSecondary }]}>
+            Please check back later
           </ThemedText>
         </View>
       );
@@ -374,6 +377,10 @@ const styles = StyleSheet.create({
   errorText: {
     marginTop: Spacing.md,
     fontSize: 16,
+  },
+  errorSubtext: {
+    marginTop: Spacing.xs,
+    fontSize: 13,
   },
   audioContainer: {
     padding: Spacing.xl,
