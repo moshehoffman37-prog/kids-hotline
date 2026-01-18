@@ -2,16 +2,11 @@ import React from "react";
 import { StyleSheet, View, Pressable, Dimensions } from "react-native";
 import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, Shadows } from "@/constants/theme";
-import { ContentItem, ContentType } from "@/lib/content";
+import { Spacing, BorderRadius } from "@/constants/theme";
+import { ContentItem } from "@/lib/content";
 
 interface ContentCardProps {
   item: ContentItem;
@@ -21,42 +16,16 @@ interface ContentCardProps {
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-const getIconForType = (type: ContentType): keyof typeof Feather.glyphMap => {
-  switch (type) {
-    case "video":
-      return "play-circle";
-    case "audio":
-      return "headphones";
-    case "photo":
-      return "image";
-  }
-};
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-
 export function ContentCard({ item, onPress, size = "medium" }: ContentCardProps) {
   const { theme } = useTheme();
-  const scale = useSharedValue(1);
 
   const cardWidth = size === "small" 
-    ? (SCREEN_WIDTH - Spacing.lg * 3) / 2.5
+    ? 140
     : size === "large"
       ? SCREEN_WIDTH - Spacing.lg * 2
-      : (SCREEN_WIDTH - Spacing.lg * 3) / 2;
+      : "100%";
 
-  const cardHeight = size === "large" ? 200 : size === "small" ? 100 : 140;
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const handlePressIn = () => {
-    scale.value = withSpring(0.96, { damping: 15, stiffness: 150 });
-  };
-
-  const handlePressOut = () => {
-    scale.value = withSpring(1, { damping: 15, stiffness: 150 });
-  };
+  const cardHeight = size === "large" ? 200 : size === "small" ? 90 : 120;
 
   const formatDuration = (seconds?: number) => {
     if (!seconds) return null;
@@ -66,36 +35,26 @@ export function ContentCard({ item, onPress, size = "medium" }: ContentCardProps
   };
 
   return (
-    <AnimatedPressable
+    <Pressable
       onPress={onPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      style={[
+      style={({ pressed }) => [
         styles.card,
         {
           width: cardWidth,
-          backgroundColor: theme.cardBackground,
+          marginRight: size === "small" ? Spacing.md : 0,
+          marginBottom: Spacing.md,
+          opacity: pressed ? 0.8 : 1,
+          transform: [{ scale: pressed ? 0.98 : 1 }],
         },
-        Shadows.card,
-        animatedStyle,
       ]}
     >
-      <View style={[styles.imageContainer, { height: cardHeight }]}>
+      <View style={[styles.imageContainer, { height: cardHeight, borderRadius: BorderRadius.sm }]}>
         <Image
           source={{ uri: item.thumbnailUrl }}
-          style={styles.image}
+          style={[styles.image, { borderRadius: BorderRadius.sm }]}
           contentFit="cover"
           transition={200}
         />
-        <View style={[styles.overlay, { backgroundColor: theme.overlay }]}>
-          <View style={styles.typeIcon}>
-            <Feather
-              name={getIconForType(item.type)}
-              size={24}
-              color="#FFFFFF"
-            />
-          </View>
-        </View>
         {item.duration ? (
           <View style={styles.duration}>
             <ThemedText style={styles.durationText}>
@@ -103,49 +62,39 @@ export function ContentCard({ item, onPress, size = "medium" }: ContentCardProps
             </ThemedText>
           </View>
         ) : null}
+        {item.type === "audio" ? (
+          <View style={styles.typeIcon}>
+            <Feather name="headphones" size={16} color="#FFFFFF" />
+          </View>
+        ) : null}
+        {item.type === "photo" ? (
+          <View style={styles.typeIcon}>
+            <Feather name="file-text" size={16} color="#FFFFFF" />
+          </View>
+        ) : null}
       </View>
-      <View style={styles.content}>
-        <ThemedText
-          numberOfLines={2}
-          style={[styles.title, { color: theme.text }]}
-        >
-          {item.title}
-        </ThemedText>
-        <ThemedText
-          numberOfLines={1}
-          style={[styles.category, { color: theme.textSecondary }]}
-        >
-          {item.category}
-        </ThemedText>
-      </View>
-    </AnimatedPressable>
+      <ThemedText
+        numberOfLines={2}
+        style={[styles.title, { color: theme.text }]}
+      >
+        {item.title}
+      </ThemedText>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: BorderRadius.md,
     overflow: "hidden",
-    marginRight: Spacing.md,
-    marginBottom: Spacing.md,
   },
   imageContainer: {
     width: "100%",
     position: "relative",
+    overflow: "hidden",
   },
   image: {
     width: "100%",
     height: "100%",
-  },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: 0.3,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  typeIcon: {
-    position: "absolute",
-    opacity: 0.9,
   },
   duration: {
     position: "absolute",
@@ -154,22 +103,24 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.75)",
     paddingHorizontal: Spacing.sm,
     paddingVertical: 2,
-    borderRadius: BorderRadius.xs,
+    borderRadius: 4,
   },
   durationText: {
     color: "#FFFFFF",
     fontSize: 12,
     fontWeight: "600",
   },
-  content: {
-    padding: Spacing.sm,
+  typeIcon: {
+    position: "absolute",
+    top: Spacing.xs,
+    left: Spacing.xs,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    padding: 4,
+    borderRadius: 4,
   },
   title: {
     fontSize: 14,
-    fontWeight: "600",
-    marginBottom: 2,
-  },
-  category: {
-    fontSize: 12,
+    fontWeight: "500",
+    marginTop: Spacing.sm,
   },
 });

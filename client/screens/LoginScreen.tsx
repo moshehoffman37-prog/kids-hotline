@@ -79,12 +79,10 @@ export default function LoginScreen() {
           resizeMode="contain"
         />
         <ThemedText type="h2" style={[styles.appName, { color: theme.text }]}>
-          OneTimeOneTime
+          Kids' Hotline
         </ThemedText>
-        <ThemedText
-          style={[styles.tagline, { color: theme.textSecondary }]}
-        >
-          Stream your favorite content
+        <ThemedText style={[styles.tagline, { color: theme.textSecondary }]}>
+          Sign in to access your content
         </ThemedText>
       </View>
 
