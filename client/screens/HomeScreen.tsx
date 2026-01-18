@@ -18,8 +18,8 @@ import * as Haptics from "expo-haptics";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ContentCard } from "@/components/ContentCard";
+import { SettingsModal } from "@/components/SettingsModal";
 import { useTheme } from "@/hooks/useTheme";
-import { useAuth } from "@/contexts/AuthContext";
 import { Spacing, BorderRadius } from "@/constants/theme";
 import * as api from "@/lib/api";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
@@ -28,8 +28,8 @@ export default function HomeScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { logout } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [settingsVisible, setSettingsVisible] = useState(false);
 
   const { data: sections, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["content-by-categories"],
@@ -74,9 +74,9 @@ export default function HomeScreen() {
     setSelectedCategory(categoryId === selectedCategory ? null : categoryId);
   };
 
-  const handleLogout = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    await logout();
+  const handleSettingsPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSettingsVisible(true);
   };
 
   if (isLoading) {
@@ -107,20 +107,22 @@ export default function HomeScreen() {
           />
         </View>
         <Pressable
-          onPress={handleLogout}
+          onPress={handleSettingsPress}
           style={({ pressed }) => [
-            styles.logoutButton,
+            styles.settingsButton,
             { opacity: pressed ? 0.6 : 1 },
           ]}
           hitSlop={8}
-          testID="button-logout"
+          testID="button-settings"
         >
-          <Feather name="log-out" size={18} color={theme.textSecondary} />
-          <ThemedText style={[styles.logoutText, { color: theme.textSecondary }]}>
-            Logout
-          </ThemedText>
+          <Feather name="settings" size={22} color={theme.textSecondary} />
         </Pressable>
       </View>
+
+      <SettingsModal
+        visible={settingsVisible}
+        onClose={() => setSettingsVisible(false)}
+      />
 
       <ScrollView
         style={styles.content}
@@ -267,15 +269,8 @@ const styles = StyleSheet.create({
     width: 120,
     height: 40,
   },
-  logoutButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: Spacing.xs,
-    paddingHorizontal: Spacing.sm,
-  },
-  logoutText: {
-    fontSize: 14,
-    marginLeft: Spacing.xs,
+  settingsButton: {
+    padding: Spacing.sm,
   },
   content: {
     flex: 1,

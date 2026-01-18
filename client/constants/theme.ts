@@ -1,53 +1,69 @@
 import { Platform } from "react-native";
 
 const primaryColor = "#1A2A3A";
-const accentColor = "#EDE518";
 const backgroundColor = "#161616";
 
-export const Colors = {
-  light: {
-    text: "#161616",
-    textSecondary: "#666666",
-    buttonText: "#161616",
-    tabIconDefault: "#666666",
-    tabIconSelected: accentColor,
-    link: accentColor,
-    primary: primaryColor,
-    accent: accentColor,
-    success: "#10B981",
-    destructive: "#EF4444",
-    border: "#E2E8F0",
-    backgroundRoot: "#FFFFFF",
-    backgroundDefault: "#F5F5F5",
-    backgroundSecondary: "#EEEEEE",
-    backgroundTertiary: "#E0E0E0",
-    inputBackground: "#FFFFFF",
-    inputBorder: "#CCCCCC",
-    cardBackground: "#FFFFFF",
-    overlay: "rgba(22, 22, 22, 0.5)",
-  },
-  dark: {
-    text: "#FFFFFF",
-    textSecondary: "#AAAAAA",
-    buttonText: "#161616",
-    tabIconDefault: "#888888",
-    tabIconSelected: accentColor,
-    link: accentColor,
-    primary: accentColor,
-    accent: accentColor,
-    success: "#34D399",
-    destructive: "#F87171",
-    border: "#333333",
-    backgroundRoot: backgroundColor,
-    backgroundDefault: "#1E1E1E",
-    backgroundSecondary: "#2A2A2A",
-    backgroundTertiary: "#333333",
-    inputBackground: "#1E1E1E",
-    inputBorder: "#444444",
-    cardBackground: "#1E1E1E",
-    overlay: "rgba(0, 0, 0, 0.7)",
-  },
-};
+export const AccentColors = {
+  yellow: "#EDE518",
+  blue: "#3B82F6",
+  green: "#10B981",
+  purple: "#8B5CF6",
+  pink: "#EC4899",
+  orange: "#F97316",
+  red: "#EF4444",
+  teal: "#14B8A6",
+} as const;
+
+export type AccentColorName = keyof typeof AccentColors;
+
+export function getColors(accentColor: string) {
+  return {
+    light: {
+      text: "#161616",
+      textSecondary: "#666666",
+      buttonText: "#161616",
+      tabIconDefault: "#666666",
+      tabIconSelected: accentColor,
+      link: accentColor,
+      primary: primaryColor,
+      accent: accentColor,
+      success: "#10B981",
+      destructive: "#EF4444",
+      border: "#E2E8F0",
+      backgroundRoot: "#FFFFFF",
+      backgroundDefault: "#F5F5F5",
+      backgroundSecondary: "#EEEEEE",
+      backgroundTertiary: "#E0E0E0",
+      inputBackground: "#FFFFFF",
+      inputBorder: "#CCCCCC",
+      cardBackground: "#FFFFFF",
+      overlay: "rgba(22, 22, 22, 0.5)",
+    },
+    dark: {
+      text: "#FFFFFF",
+      textSecondary: "#AAAAAA",
+      buttonText: "#161616",
+      tabIconDefault: "#888888",
+      tabIconSelected: accentColor,
+      link: accentColor,
+      primary: accentColor,
+      accent: accentColor,
+      success: "#34D399",
+      destructive: "#F87171",
+      border: "#333333",
+      backgroundRoot: backgroundColor,
+      backgroundDefault: "#1E1E1E",
+      backgroundSecondary: "#2A2A2A",
+      backgroundTertiary: "#333333",
+      inputBackground: "#1E1E1E",
+      inputBorder: "#444444",
+      cardBackground: "#1E1E1E",
+      overlay: "rgba(0, 0, 0, 0.7)",
+    },
+  };
+}
+
+export const Colors = getColors(AccentColors.yellow);
 
 export const Spacing = {
   xs: 4,
