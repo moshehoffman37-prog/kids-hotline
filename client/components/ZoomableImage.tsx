@@ -6,6 +6,7 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
+  runOnJS,
 } from "react-native-reanimated";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -14,17 +15,26 @@ interface ZoomableImageProps {
   uri: string;
   headers?: Record<string, string>;
   style?: ImageStyle;
+  onZoomStart?: () => void;
+  onZoomEnd?: () => void;
 }
 
-export function ZoomableImage({ uri, headers, style }: ZoomableImageProps) {
+export function ZoomableImage({ uri, headers, style, onZoomStart, onZoomEnd }: ZoomableImageProps) {
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const savedTranslateX = useSharedValue(0);
   const savedTranslateY = useSharedValue(0);
+  const isZoomed = useSharedValue(false);
 
   const pinchGesture = Gesture.Pinch()
+    .onStart(() => {
+      if (!isZoomed.value && onZoomStart) {
+        isZoomed.value = true;
+        runOnJS(onZoomStart)();
+      }
+    })
     .onUpdate((event) => {
       scale.value = Math.min(Math.max(savedScale.value * event.scale, 1), 4);
     })
@@ -37,6 +47,10 @@ export function ZoomableImage({ uri, headers, style }: ZoomableImageProps) {
         translateY.value = withTiming(0);
         savedTranslateX.value = 0;
         savedTranslateY.value = 0;
+        if (isZoomed.value && onZoomEnd) {
+          isZoomed.value = false;
+          runOnJS(onZoomEnd)();
+        }
       }
     });
 
@@ -63,7 +77,15 @@ export function ZoomableImage({ uri, headers, style }: ZoomableImageProps) {
         translateY.value = withTiming(0);
         savedTranslateX.value = 0;
         savedTranslateY.value = 0;
+        if (isZoomed.value && onZoomEnd) {
+          isZoomed.value = false;
+          runOnJS(onZoomEnd)();
+        }
       } else {
+        if (!isZoomed.value && onZoomStart) {
+          isZoomed.value = true;
+          runOnJS(onZoomStart)();
+        }
         scale.value = withTiming(2.5);
         savedScale.value = 2.5;
       }
@@ -81,6 +103,7 @@ export function ZoomableImage({ uri, headers, style }: ZoomableImageProps) {
       { translateY: translateY.value },
       { scale: scale.value },
     ],
+    zIndex: scale.value > 1 ? 1000 : 1,
   }));
 
   if (Platform.OS === "web") {

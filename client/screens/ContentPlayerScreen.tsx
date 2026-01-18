@@ -111,6 +111,7 @@ export default function ContentPlayerScreen() {
   const [playbackRate, setPlaybackRate] = useState(1.0);
   const progressBarRef = useRef<View>(null);
   const [progressBarWidth, setProgressBarWidth] = useState(0);
+  const [zoomedPageIndex, setZoomedPageIndex] = useState<number | null>(null);
 
   const playbackSpeeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
 
@@ -481,19 +482,34 @@ export default function ContentPlayerScreen() {
       <ScrollView 
         style={styles.documentScrollView}
         contentContainerStyle={styles.documentContent}
+        scrollEnabled={zoomedPageIndex === null}
       >
-        {documentPages.map((pageUrl, index) => (
-          <View key={index} style={styles.documentPage}>
-            <ZoomableImage
-              uri={pageUrl}
-              headers={authToken ? { Authorization: `Bearer ${authToken}` } : undefined}
-              style={styles.pageImage}
-            />
-            <ThemedText style={[styles.pageNumber, { color: theme.textSecondary }]}>
-              Page {index + 1} of {documentPages.length}
-            </ThemedText>
-          </View>
-        ))}
+        {documentPages.map((pageUrl, index) => {
+          const isZoomed = zoomedPageIndex === index;
+          const isOtherZoomed = zoomedPageIndex !== null && zoomedPageIndex !== index;
+          
+          return (
+            <View 
+              key={index} 
+              style={[
+                styles.documentPage,
+                isZoomed && styles.documentPageZoomed,
+                isOtherZoomed && styles.documentPageHidden,
+              ]}
+            >
+              <ZoomableImage
+                uri={pageUrl}
+                headers={authToken ? { Authorization: `Bearer ${authToken}` } : undefined}
+                style={styles.pageImage}
+                onZoomStart={() => setZoomedPageIndex(index)}
+                onZoomEnd={() => setZoomedPageIndex(null)}
+              />
+              <ThemedText style={[styles.pageNumber, { color: theme.textSecondary }]}>
+                Page {index + 1} of {documentPages.length}
+              </ThemedText>
+            </View>
+          );
+        })}
       </ScrollView>
     );
   };
@@ -761,6 +777,12 @@ const styles = StyleSheet.create({
   documentPage: {
     marginBottom: Spacing.lg,
     alignItems: "center",
+  },
+  documentPageZoomed: {
+    zIndex: 1000,
+  },
+  documentPageHidden: {
+    opacity: 0,
   },
   pageImage: {
     width: SCREEN_WIDTH - Spacing.lg * 2,
