@@ -3,6 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 const API_BASE_URL = "https://onetimeonetime.com";
 const AUTH_TOKEN_KEY = "@onetimeonetime_auth_token";
 const USER_DATA_KEY = "@onetimeonetime_user_data";
+const VIEWED_CONTENT_KEY = "@onetimeonetime_viewed_content";
 
 export interface User {
   id: string;
@@ -213,7 +214,31 @@ export async function getStreamUrl(itemId: string): Promise<StreamResponse> {
   return makeRequest<StreamResponse>(`/api/videos/${itemId}/stream`);
 }
 
+async function getLocalViewedContent(): Promise<Set<string>> {
+  try {
+    const data = await AsyncStorage.getItem(VIEWED_CONTENT_KEY);
+    if (data) {
+      return new Set(JSON.parse(data));
+    }
+  } catch (error) {
+    console.log("Error reading viewed content:", error);
+  }
+  return new Set();
+}
+
+async function setLocalViewedContent(ids: Set<string>): Promise<void> {
+  try {
+    await AsyncStorage.setItem(VIEWED_CONTENT_KEY, JSON.stringify([...ids]));
+  } catch (error) {
+    console.log("Error saving viewed content:", error);
+  }
+}
+
 export async function markVideoViewed(videoId: string): Promise<void> {
+  const viewedIds = await getLocalViewedContent();
+  viewedIds.add(videoId);
+  await setLocalViewedContent(viewedIds);
+
   const token = await getAuthToken();
   
   const headers: Record<string, string> = {
@@ -238,12 +263,18 @@ export async function markVideoViewed(videoId: string): Promise<void> {
   }
 }
 
-export function isVideoNew(video: VideoItem): boolean {
+export async function isContentViewedLocally(contentId: string): Promise<boolean> {
+  const viewedIds = await getLocalViewedContent();
+  return viewedIds.has(contentId);
+}
+
+export function isVideoNew(video: VideoItem, locallyViewed: boolean = false): boolean {
   if (!video.createdAt) return false;
+  if (locallyViewed || video.viewed) return false;
   const createdTime = new Date(video.createdAt).getTime();
   const now = Date.now();
   const twentyFourHours = 24 * 60 * 60 * 1000;
-  return (now - createdTime) < twentyFourHours && !video.viewed;
+  return (now - createdTime) < twentyFourHours;
 }
 
 export function getDocumentPageUrl(documentId: string, pageNumber: number): string {
@@ -258,10 +289,11 @@ function formatCategoryName(category: string): string {
 }
 
 export async function getContentByCategories(): Promise<CategorySection[]> {
-  const [videoCategories, allContent, documents] = await Promise.all([
+  const [videoCategories, allContent, documents, locallyViewed] = await Promise.all([
     getVideoCategories().catch(() => [] as VideoCategory[]),
     getVideos().catch(() => [] as VideoItem[]),
     getDocuments().catch(() => [] as DocumentItem[]),
+    getLocalViewedContent(),
   ]);
 
   const sections: CategorySection[] = [];
@@ -285,6 +317,7 @@ export async function getContentByCategories(): Promise<CategorySection[]> {
       items: categoryItems.map((item) => {
         const isAudio = item.mediaType === "audio";
         const thumb = getVideoThumbnailUrl(item);
+        const viewedLocally = locallyViewed.has(item.id);
         return {
           id: item.id,
           title: item.title,
@@ -295,7 +328,7 @@ export async function getContentByCategories(): Promise<CategorySection[]> {
           duration: item.duration,
           categoryId: item.categoryId,
           createdAt: item.createdAt,
-          isNew: isVideoNew(item),
+          isNew: isVideoNew(item, viewedLocally),
         };
       }),
     });
