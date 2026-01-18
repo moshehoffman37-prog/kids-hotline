@@ -51,7 +51,7 @@ export interface StreamResponse {
   mediaType?: "video" | "audio";
 }
 
-const BUNNY_CDN_BASE = "vz-b4f3c875-a3e.b-cdn.net";
+const BUNNY_CDN_BASE = "vz-2480b6a7-327.b-cdn.net";
 
 export function extractHlsUrl(embedUrl?: string): string | null {
   if (!embedUrl) return null;
@@ -288,7 +288,7 @@ export function getVideoThumbnailUrl(video: VideoItem): { url: string | null; re
   }
   if (video.bunnyGuid) {
     return {
-      url: `https://vz-b4f3c875-a3e.b-cdn.net/${video.bunnyGuid}/thumbnail.jpg`,
+      url: `https://${BUNNY_CDN_BASE}/${video.bunnyGuid}/thumbnail.jpg`,
       requiresAuth: false,
     };
   }
