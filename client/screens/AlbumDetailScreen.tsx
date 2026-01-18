@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   StyleSheet,
   ScrollView,
   Pressable,
   ActivityIndicator,
-  FlatList,
+  GestureResponderEvent,
+  Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -41,6 +42,8 @@ export default function AlbumDetailScreen() {
   const [audioDuration, setAudioDuration] = useState(0);
   const [audioPosition, setAudioPosition] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1.0);
+  const [progressBarWidth, setProgressBarWidth] = useState(0);
+  const progressBarRef = useRef<View>(null);
 
   const playbackSpeeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
 
@@ -126,6 +129,42 @@ export default function AlbumDetailScreen() {
     if (sound) {
       await sound.setRateAsync(speed, true);
     }
+  };
+
+  const handleSeek = async (event: GestureResponderEvent) => {
+    if (!sound || audioDuration <= 0 || progressBarWidth <= 0) return;
+    
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    
+    const nativeEvent = event.nativeEvent;
+    let locationX: number;
+    
+    if (Platform.OS === "web") {
+      const webEvent = nativeEvent as unknown as { offsetX?: number };
+      locationX = webEvent.offsetX ?? 0;
+    } else {
+      locationX = nativeEvent.locationX ?? 0;
+    }
+    
+    if (!Number.isFinite(locationX) || locationX < 0) {
+      locationX = 0;
+    }
+    
+    const percentage = Math.max(0, Math.min(1, locationX / progressBarWidth));
+    const newPosition = Math.round(percentage * audioDuration);
+    
+    try {
+      await sound.setPositionAsync(newPosition);
+    } catch (error) {
+      console.log("Seek error:", error);
+    }
+  };
+
+  const handlePlayAll = async () => {
+    if (!album?.tracks || album.tracks.length === 0) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const firstTrack = album.tracks[0];
+    await playTrack(firstTrack);
   };
 
   const formatDuration = (seconds?: number | null) => {
@@ -251,6 +290,19 @@ export default function AlbumDetailScreen() {
           </ThemedText>
         </View>
 
+        <Pressable
+          onPress={handlePlayAll}
+          style={({ pressed }) => [
+            styles.playAllButton,
+            { backgroundColor: theme.accent, opacity: pressed ? 0.8 : 1 },
+          ]}
+        >
+          <Feather name="play" size={20} color={theme.buttonText} />
+          <ThemedText style={[styles.playAllText, { color: theme.buttonText }]}>
+            Play All
+          </ThemedText>
+        </Pressable>
+
         <View style={styles.trackList}>
           {album?.tracks?.map((track) => (
             <View key={track.id}>
@@ -282,20 +334,40 @@ export default function AlbumDetailScreen() {
                 color={theme.buttonText}
               />
             </Pressable>
-            <View style={styles.progressContainer}>
-              <View style={[styles.progressBar, { backgroundColor: theme.backgroundSecondary }]}>
-                <View
-                  style={[
-                    styles.progressFill,
-                    {
-                      backgroundColor: theme.accent,
-                      width: audioDuration > 0
-                        ? `${(audioPosition / audioDuration) * 100}%`
-                        : "0%",
-                    },
-                  ]}
-                />
-              </View>
+            <View 
+              style={styles.progressContainer}
+              onLayout={(e) => setProgressBarWidth(e.nativeEvent.layout.width)}
+            >
+              <Pressable
+                ref={progressBarRef}
+                onPress={handleSeek}
+                style={styles.progressBarTouchable}
+              >
+                <View style={[styles.progressBar, { backgroundColor: theme.backgroundSecondary }]}>
+                  <View
+                    style={[
+                      styles.progressFill,
+                      {
+                        backgroundColor: theme.accent,
+                        width: audioDuration > 0
+                          ? `${(audioPosition / audioDuration) * 100}%`
+                          : "0%",
+                      },
+                    ]}
+                  />
+                  <View
+                    style={[
+                      styles.progressThumb,
+                      {
+                        backgroundColor: theme.accent,
+                        left: audioDuration > 0
+                          ? `${(audioPosition / audioDuration) * 100}%`
+                          : "0%",
+                      },
+                    ]}
+                  />
+                </View>
+              </Pressable>
               <View style={styles.timeContainer}>
                 <ThemedText style={[styles.timeText, { color: theme.textSecondary }]}>
                   {formatTime(audioPosition)}
@@ -406,6 +478,21 @@ const styles = StyleSheet.create({
   trackCount: {
     fontSize: 14,
   },
+  playAllButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xl,
+    borderRadius: BorderRadius.lg,
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.md,
+  },
+  playAllText: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginLeft: Spacing.sm,
+  },
   trackList: {
     marginTop: Spacing.md,
   },
@@ -461,14 +548,26 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: Spacing.md,
   },
+  progressBarTouchable: {
+    paddingVertical: Spacing.sm,
+  },
   progressBar: {
     height: 4,
     borderRadius: 2,
-    overflow: "hidden",
+    overflow: "visible",
+    position: "relative",
   },
   progressFill: {
     height: "100%",
     borderRadius: 2,
+  },
+  progressThumb: {
+    position: "absolute",
+    top: -4,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginLeft: -6,
   },
   timeContainer: {
     flexDirection: "row",
