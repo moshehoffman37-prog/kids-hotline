@@ -113,6 +113,7 @@ export default function ContentPlayerScreen() {
   const [audioStreamUrl, setAudioStreamUrl] = useState<string | null>(null);
   const [playbackRate, setPlaybackRate] = useState(1.0);
   const progressBarRef = useRef<View>(null);
+  const documentListRef = useRef<FlatList>(null);
   const [progressBarWidth, setProgressBarWidth] = useState(0);
   const [zoomedPageIndex, setZoomedPageIndex] = useState<number | null>(null);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
@@ -504,6 +505,7 @@ export default function ContentPlayerScreen() {
     return (
       <View style={styles.fullScreenDocument}>
         <FlatList
+          ref={documentListRef}
           key={`${windowWidth}-${windowHeight}`}
           data={documentPages}
           renderItem={renderDocumentPage}
@@ -540,6 +542,32 @@ export default function ContentPlayerScreen() {
               </ThemedText>
               <View style={{ width: 40 }} />
             </View>
+            
+            {currentPageIndex > 0 ? (
+              <Pressable
+                style={[styles.pageNavButton, styles.prevButton, { top: windowHeight / 2 - 24 }]}
+                onPress={() => {
+                  const newIndex = currentPageIndex - 1;
+                  setCurrentPageIndex(newIndex);
+                  documentListRef.current?.scrollToIndex({ index: newIndex, animated: true });
+                }}
+              >
+                <Feather name="chevron-left" size={32} color="#fff" />
+              </Pressable>
+            ) : null}
+            
+            {currentPageIndex < documentPages.length - 1 ? (
+              <Pressable
+                style={[styles.pageNavButton, styles.nextButton, { top: windowHeight / 2 - 24 }]}
+                onPress={() => {
+                  const newIndex = currentPageIndex + 1;
+                  setCurrentPageIndex(newIndex);
+                  documentListRef.current?.scrollToIndex({ index: newIndex, animated: true });
+                }}
+              >
+                <Feather name="chevron-right" size={32} color="#fff" />
+              </Pressable>
+            ) : null}
             
             <View style={[styles.documentFooter, { paddingBottom: insets.bottom + Spacing.sm }]}>
               <ThemedText style={styles.pageCounter}>
@@ -864,6 +892,21 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 14,
     fontWeight: "500",
+  },
+  pageNavButton: {
+    position: "absolute",
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  prevButton: {
+    left: Spacing.md,
+  },
+  nextButton: {
+    right: Spacing.md,
   },
   infoSection: {
     padding: Spacing.xl,
