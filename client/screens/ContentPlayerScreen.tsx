@@ -43,29 +43,32 @@ export default function ContentPlayerScreen() {
   const [documentPages, setDocumentPages] = useState<string[]>([]);
   const [videoEmbedUrl, setVideoEmbedUrl] = useState<string | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
+  const [audioStreamUrl, setAudioStreamUrl] = useState<string | null>(null);
 
   useEffect(() => {
     AsyncStorage.getItem(AUTH_TOKEN_KEY).then(setAuthToken);
   }, []);
 
   useEffect(() => {
-    if (item.type === "video") {
+    if (item.type === "video" || item.type === "audio") {
       setIsLoading(true);
       setVideoError(null);
       
       api.markVideoViewed(item.id).catch(() => {});
       
-      api.getVideoStreamUrl(item.id)
+      api.getStreamUrl(item.id)
         .then((response) => {
-          if (response.embedUrl) {
+          if (item.type === "audio" && response.cdnUrl) {
+            setAudioStreamUrl(response.cdnUrl);
+          } else if (item.type === "video" && response.embedUrl) {
             setVideoEmbedUrl(response.embedUrl);
-          } else {
+          } else if (item.type === "video") {
             setVideoError("Video stream not available");
           }
           setIsLoading(false);
         })
         .catch((error) => {
-          setVideoError(error.message || "Failed to load video");
+          setVideoError(error.message || "Failed to load content");
           setIsLoading(false);
         });
     }
@@ -101,15 +104,15 @@ export default function ContentPlayerScreen() {
   const handleAudioPlayPause = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
-    const streamUrl = api.getAudioStreamUrl(item.id);
+    if (!audioStreamUrl) {
+      console.error("No audio stream URL available");
+      return;
+    }
     
     if (!sound) {
       try {
         const { sound: newSound } = await Audio.Sound.createAsync(
-          { 
-            uri: streamUrl,
-            headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
-          },
+          { uri: audioStreamUrl },
           { shouldPlay: true },
           onAudioStatusUpdate
         );
@@ -188,22 +191,37 @@ export default function ContentPlayerScreen() {
     );
   };
 
-  const renderAudioPlayer = () => (
-    <View style={styles.audioContainer}>
-      <View style={[styles.audioThumbnailPlaceholder, { backgroundColor: theme.backgroundSecondary }]}>
-        <Feather name="headphones" size={64} color={theme.accent} />
-      </View>
-      <View style={styles.audioControls}>
-        <Pressable
-          onPress={handleAudioPlayPause}
-          style={[styles.playButton, { backgroundColor: theme.accent }]}
-        >
-          <Feather
-            name={isPlaying ? "pause" : "play"}
-            size={32}
-            color={theme.buttonText}
-          />
-        </Pressable>
+  const renderAudioPlayer = () => {
+    if (isLoading) {
+      return (
+        <View style={styles.audioContainer}>
+          <View style={[styles.audioThumbnailPlaceholder, { backgroundColor: theme.backgroundSecondary }]}>
+            <ActivityIndicator size="large" color={theme.accent} />
+          </View>
+          <ThemedText style={[styles.loadingText, { color: theme.textSecondary }]}>
+            Loading audio...
+          </ThemedText>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.audioContainer}>
+        <View style={[styles.audioThumbnailPlaceholder, { backgroundColor: theme.backgroundSecondary }]}>
+          <Feather name="headphones" size={64} color={theme.accent} />
+        </View>
+        <View style={styles.audioControls}>
+          <Pressable
+            onPress={handleAudioPlayPause}
+            style={[styles.playButton, { backgroundColor: theme.accent, opacity: audioStreamUrl ? 1 : 0.5 }]}
+            disabled={!audioStreamUrl}
+          >
+            <Feather
+              name={isPlaying ? "pause" : "play"}
+              size={32}
+              color={theme.buttonText}
+            />
+          </Pressable>
         <View style={styles.progressContainer}>
           <View
             style={[styles.progressBar, { backgroundColor: theme.backgroundSecondary }]}
@@ -231,7 +249,8 @@ export default function ContentPlayerScreen() {
         </View>
       </View>
     </View>
-  );
+    );
+  };
 
   const renderDocumentViewer = () => {
     if (isLoading || documentPages.length === 0) {

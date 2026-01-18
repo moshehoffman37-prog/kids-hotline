@@ -20,8 +20,11 @@ export interface VideoItem {
   id: string;
   title: string;
   description?: string | null;
+  mediaType?: "video" | "audio";
+  storageType?: "local" | "bunny_storage" | "bunny";
   thumbnailPath?: string | null;
   bunnyThumbnailUrl?: string | null;
+  bunnyStorageUrl?: string | null;
   bunnyGuid?: string | null;
   categoryId?: string | null;
   status?: string;
@@ -30,21 +33,16 @@ export interface VideoItem {
   viewed?: boolean;
 }
 
-export interface VideoStreamResponse {
+export interface StreamResponse {
   bunny?: boolean;
+  bunnyStorage?: boolean;
   embedUrl?: string;
+  cdnUrl?: string;
+  mediaType?: "video" | "audio";
 }
 
 export interface VideoViewStatus {
   viewed: boolean;
-}
-
-export interface AudioItem {
-  id: string;
-  name: string;
-  type?: string;
-  duration?: number | null;
-  createdAt?: string;
 }
 
 export interface DocumentItem {
@@ -184,9 +182,6 @@ export async function getVideos(): Promise<VideoItem[]> {
   return makeRequest<VideoItem[]>("/api/videos");
 }
 
-export async function getAudioFiles(): Promise<AudioItem[]> {
-  return makeRequest<AudioItem[]>("/api/audio-files");
-}
 
 export async function getDocuments(): Promise<DocumentItem[]> {
   return makeRequest<DocumentItem[]>("/api/documents");
@@ -214,8 +209,8 @@ export function getVideoThumbnailUrl(video: VideoItem): { url: string | null; re
   return { url: null, requiresAuth: false };
 }
 
-export async function getVideoStreamUrl(videoId: string): Promise<VideoStreamResponse> {
-  return makeRequest<VideoStreamResponse>(`/api/videos/${videoId}/stream`);
+export async function getStreamUrl(itemId: string): Promise<StreamResponse> {
+  return makeRequest<StreamResponse>(`/api/videos/${itemId}/stream`);
 }
 
 export async function markVideoViewed(videoId: string): Promise<void> {
@@ -232,10 +227,6 @@ export function isVideoNew(video: VideoItem): boolean {
   return (now - createdTime) < twentyFourHours && !video.viewed;
 }
 
-export function getAudioStreamUrl(audioId: string): string {
-  return `${API_BASE_URL}/api/audio-files/${audioId}/stream`;
-}
-
 export function getDocumentPageUrl(documentId: string, pageNumber: number): string {
   return `${API_BASE_URL}/api/documents/${documentId}/page/${pageNumber}`;
 }
@@ -248,16 +239,17 @@ function formatCategoryName(category: string): string {
 }
 
 export async function getContentByCategories(): Promise<CategorySection[]> {
-  const [videoCategories, videos, audioFiles, documents] = await Promise.all([
+  const [videoCategories, allContent, documents] = await Promise.all([
     getVideoCategories().catch(() => [] as VideoCategory[]),
     getVideos().catch(() => [] as VideoItem[]),
-    getAudioFiles().catch(() => [] as AudioItem[]),
     getDocuments().catch(() => [] as DocumentItem[]),
   ]);
 
   const sections: CategorySection[] = [];
-
   const categoryMap = new Map(videoCategories.map((c) => [c.id, c.name]));
+  
+  const videos = allContent.filter((item) => item.mediaType !== "audio");
+  const audioFiles = allContent.filter((item) => item.mediaType === "audio");
   
   const videosByCategory = new Map<string, VideoItem[]>();
   videos.forEach((video) => {
@@ -292,26 +284,27 @@ export async function getContentByCategories(): Promise<CategorySection[]> {
     });
   });
 
-  const audioByCategory = new Map<string, AudioItem[]>();
+  const audioByCategory = new Map<string, VideoItem[]>();
   audioFiles.forEach((audio) => {
-    const category = audio.type || "other";
+    const category = audio.categoryId || "audio";
     if (!audioByCategory.has(category)) {
       audioByCategory.set(category, []);
     }
     audioByCategory.get(category)!.push(audio);
   });
 
-  audioByCategory.forEach((categoryAudio, category) => {
+  audioByCategory.forEach((categoryAudio, categoryId) => {
+    const categoryName = categoryMap.get(categoryId) || formatCategoryName(categoryId);
     sections.push({
-      id: `audio-${category}`,
-      name: formatCategoryName(category),
+      id: `audio-${categoryId}`,
+      name: categoryName,
       type: "audio",
       items: categoryAudio.map((a) => ({
         id: a.id,
-        title: a.name,
+        title: a.title,
         type: "audio" as ContentType,
         duration: a.duration,
-        category: a.type,
+        categoryId: a.categoryId,
         createdAt: a.createdAt,
       })),
     });
