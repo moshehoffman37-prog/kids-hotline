@@ -8,6 +8,7 @@ import {
   Pressable,
   ActivityIndicator,
   Linking,
+  useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
@@ -31,6 +32,16 @@ export default function HomeScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [settingsVisible, setSettingsVisible] = useState(false);
+  const { width: windowWidth } = useWindowDimensions();
+  
+  const gridConfig = useMemo(() => {
+    const padding = Spacing.lg * 2;
+    const gap = Spacing.xs * 2;
+    const availableWidth = windowWidth - padding;
+    const numColumns = windowWidth >= 768 ? (windowWidth >= 1024 ? 4 : 3) : 2;
+    const cardWidth = (availableWidth - gap * (numColumns - 1)) / numColumns;
+    return { numColumns, cardWidth };
+  }, [windowWidth]);
 
   const { data: sections, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["content-by-categories"],
@@ -282,11 +293,12 @@ export default function HomeScreen() {
             <View style={styles.filteredContent}>
               <View style={styles.contentGrid}>
                 {filteredItems.map((item) => (
-                  <View key={item.id} style={styles.gridItem}>
+                  <View key={item.id} style={[styles.gridItem, { width: gridConfig.cardWidth + Spacing.xs * 2 }]}>
                     <ContentCard
                       item={item}
                       onPress={() => handleContentPress(item)}
                       size="medium"
+                      cardWidth={gridConfig.cardWidth}
                     />
                   </View>
                 ))}
@@ -400,7 +412,6 @@ const styles = StyleSheet.create({
     marginHorizontal: -Spacing.xs,
   },
   gridItem: {
-    width: "50%",
     paddingHorizontal: Spacing.xs,
   },
   emptyCategory: {

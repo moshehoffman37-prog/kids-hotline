@@ -373,7 +373,7 @@ export default function ContentPlayerScreen() {
           <Image
             source={imageSource}
             style={styles.audioThumbnail}
-            contentFit="cover"
+            contentFit="contain"
           />
         ) : (
           <View style={[styles.audioThumbnailPlaceholder, { backgroundColor: theme.backgroundSecondary }]}>

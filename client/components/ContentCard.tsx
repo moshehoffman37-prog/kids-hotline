@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Pressable, Dimensions } from "react-native";
+import { StyleSheet, View, Pressable, Dimensions, useWindowDimensions } from "react-native";
 import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -15,11 +15,12 @@ interface ContentCardProps {
   item: api.ContentItem;
   onPress: () => void;
   size?: "small" | "medium" | "large";
+  cardWidth?: number;
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-export function ContentCard({ item, onPress, size = "medium" }: ContentCardProps) {
+export function ContentCard({ item, onPress, size = "medium", cardWidth: propCardWidth }: ContentCardProps) {
   const { theme } = useTheme();
   const [imageError, setImageError] = useState(false);
   const [authToken, setAuthToken] = useState<string | null>(null);
@@ -30,13 +31,8 @@ export function ContentCard({ item, onPress, size = "medium" }: ContentCardProps
     }
   }, [item.thumbnailRequiresAuth]);
 
-  const cardWidth = size === "small" 
-    ? 140
-    : size === "large"
-      ? SCREEN_WIDTH - Spacing.lg * 2
-      : "100%";
-
-  const cardHeight = size === "large" ? 200 : size === "small" ? 90 : 120;
+  const cardWidth = propCardWidth ? propCardWidth : size === "small" ? 140 : size === "large" ? SCREEN_WIDTH - Spacing.lg * 2 : "100%";
+  const cardHeight = propCardWidth ? propCardWidth : size === "small" ? 140 : size === "large" ? 200 : undefined;
 
   const formatDuration = (seconds?: number | null) => {
     if (!seconds) return null;
@@ -85,7 +81,7 @@ export function ContentCard({ item, onPress, size = "medium" }: ContentCardProps
         },
       ]}
     >
-      <View style={[styles.imageContainer, { height: cardHeight, borderRadius: BorderRadius.xs }]}>
+      <View style={[styles.imageContainer, { height: cardHeight, aspectRatio: size === "medium" && !propCardWidth ? 1 : undefined, borderRadius: BorderRadius.xs }]}>
         {showPlaceholder ? (
           <View style={[styles.placeholderImage, { backgroundColor: theme.backgroundSecondary, borderRadius: BorderRadius.xs }]}>
             <Feather name={getTypeIcon()} size={32} color={theme.textSecondary} />
