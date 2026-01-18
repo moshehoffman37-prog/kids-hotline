@@ -9,6 +9,7 @@ import {
   GestureResponderEvent,
   Platform,
   FlatList,
+  useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -97,6 +98,7 @@ export default function ContentPlayerScreen() {
   const navigation = useNavigation();
   const route = useRoute<ContentPlayerRouteProp>();
   const { item } = route.params;
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -487,13 +489,13 @@ export default function ContentPlayerScreen() {
 
     const renderDocumentPage = ({ item: pageUrl, index }: { item: string; index: number }) => (
       <Pressable 
-        style={[styles.documentPageFullscreen, { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }]}
+        style={[styles.documentPageFullscreen, { width: windowWidth, height: windowHeight }]}
         onPress={toggleDocumentControls}
       >
         <ZoomableImage
           uri={pageUrl}
           headers={authToken ? { Authorization: `Bearer ${authToken}` } : undefined}
-          style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }}
+          style={{ width: windowWidth, height: windowHeight }}
           resetKey={currentPageIndex}
         />
       </Pressable>
@@ -502,6 +504,7 @@ export default function ContentPlayerScreen() {
     return (
       <View style={styles.fullScreenDocument}>
         <FlatList
+          key={`${windowWidth}-${windowHeight}`}
           data={documentPages}
           renderItem={renderDocumentPage}
           keyExtractor={(_, index) => index.toString()}
@@ -509,12 +512,12 @@ export default function ContentPlayerScreen() {
           pagingEnabled
           showsHorizontalScrollIndicator={false}
           onMomentumScrollEnd={(e) => {
-            const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+            const index = Math.round(e.nativeEvent.contentOffset.x / windowWidth);
             setCurrentPageIndex(index);
           }}
           getItemLayout={(_, index) => ({
-            length: SCREEN_WIDTH,
-            offset: SCREEN_WIDTH * index,
+            length: windowWidth,
+            offset: windowWidth * index,
             index,
           })}
         />
