@@ -52,6 +52,9 @@ export default function ContentPlayerScreen() {
     if (item.type === "video") {
       setIsLoading(true);
       setVideoError(null);
+      
+      api.markVideoViewed(item.id).catch(() => {});
+      
       api.getVideoStreamUrl(item.id)
         .then((response) => {
           if (response.embedUrl) {

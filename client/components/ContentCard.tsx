@@ -96,6 +96,11 @@ export function ContentCard({ item, onPress, size = "medium" }: ContentCardProps
         <View style={styles.typeIcon}>
           <Feather name={getTypeIcon()} size={16} color="#FFFFFF" />
         </View>
+        {item.isNew ? (
+          <View style={styles.newBadge}>
+            <ThemedText style={styles.newBadgeText}>NEW</ThemedText>
+          </View>
+        ) : null}
       </View>
       <ThemedText
         numberOfLines={2}
@@ -147,6 +152,20 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.6)",
     padding: 4,
     borderRadius: 4,
+  },
+  newBadge: {
+    position: "absolute",
+    top: Spacing.xs,
+    right: Spacing.xs,
+    backgroundColor: "#EDE518",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  newBadgeText: {
+    color: "#161616",
+    fontSize: 10,
+    fontWeight: "700",
   },
   title: {
     fontSize: 14,

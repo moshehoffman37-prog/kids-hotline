@@ -20,18 +20,22 @@ export interface VideoItem {
   id: string;
   title: string;
   description?: string | null;
-  thumbnailPath?: string | null;
-  bunnyThumbnailUrl?: string | null;
+  thumbnailUrl?: string | null;
   bunnyGuid?: string | null;
   categoryId?: string | null;
   status?: string;
   duration?: number | null;
   createdAt?: string;
+  viewed?: boolean;
 }
 
 export interface VideoStreamResponse {
   bunny?: boolean;
   embedUrl?: string;
+}
+
+export interface VideoViewStatus {
+  viewed: boolean;
 }
 
 export interface AudioItem {
@@ -66,6 +70,7 @@ export interface ContentItem {
   category?: string;
   categoryId?: string | null;
   createdAt?: string;
+  isNew?: boolean;
 }
 
 export interface CategorySection {
@@ -185,21 +190,35 @@ export async function getDocuments(): Promise<DocumentItem[]> {
   return makeRequest<DocumentItem[]>("/api/documents");
 }
 
-export function getVideoThumbnailUrl(video: VideoItem): string {
-  if (video.thumbnailPath) {
-    return `${API_BASE_URL}${video.thumbnailPath}`;
-  }
-  if (video.bunnyThumbnailUrl) {
-    return video.bunnyThumbnailUrl;
+export function getVideoThumbnailUrl(video: VideoItem): string | null {
+  if (video.thumbnailUrl) {
+    if (video.thumbnailUrl.startsWith("http")) {
+      return video.thumbnailUrl;
+    }
+    return `${API_BASE_URL}${video.thumbnailUrl}`;
   }
   if (video.bunnyGuid) {
     return `https://vz-b4f3c875-a3e.b-cdn.net/${video.bunnyGuid}/thumbnail.jpg`;
   }
-  return `${API_BASE_URL}/api/videos/${video.id}/thumbnail`;
+  return null;
 }
 
 export async function getVideoStreamUrl(videoId: string): Promise<VideoStreamResponse> {
   return makeRequest<VideoStreamResponse>(`/api/videos/${videoId}/stream`);
+}
+
+export async function markVideoViewed(videoId: string): Promise<void> {
+  await makeRequest<void>(`/api/videos/${videoId}/mark-viewed`, {
+    method: "POST",
+  });
+}
+
+export function isVideoNew(video: VideoItem): boolean {
+  if (!video.createdAt) return false;
+  const createdTime = new Date(video.createdAt).getTime();
+  const now = Date.now();
+  const twentyFourHours = 24 * 60 * 60 * 1000;
+  return (now - createdTime) < twentyFourHours && !video.viewed;
 }
 
 export function getAudioStreamUrl(audioId: string): string {
@@ -253,6 +272,7 @@ export async function getContentByCategories(): Promise<CategorySection[]> {
         duration: v.duration,
         categoryId: v.categoryId,
         createdAt: v.createdAt,
+        isNew: isVideoNew(v),
       })),
     });
   });

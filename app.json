@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "Kids' Hotline",
-    "slug": "kids-hotline",
+    "name": "OneTimeOneTime",
+    "slug": "onetimeonetime",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "kidshotline",
+    "scheme": "onetimeonetime",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.onetimeonetime.kidshotline"
+      "bundleIdentifier": "com.onetimeonetime.app"
     },
     "android": {
       "adaptiveIcon": {
@@ -21,7 +21,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.onetimeonetime.kidshotline"
+      "package": "com.onetimeonetime.app"
     },
     "web": {
       "output": "single",
