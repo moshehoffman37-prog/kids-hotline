@@ -50,8 +50,8 @@ export default function HomeScreen() {
 
   const isSubscriptionInactive = useMemo(() => {
     if (!subscription) return false;
-    if (subscription.isWhitelistedEmail) return false;
-    return !subscription.hasActiveSubscription;
+    if (subscription.isWhitelisted) return false;
+    return !subscription.active;
   }, [subscription]);
 
   const allItems = useMemo(() => {

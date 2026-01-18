@@ -15,11 +15,9 @@ export interface User {
 
 export interface SubscriptionStatus {
   subscriptionStatus: string;
-  hasActiveSubscription: boolean;
-  hasUsedTrial: boolean;
-  trialEndsAt?: string;
-  daysRemaining?: number;
-  isWhitelistedEmail?: boolean;
+  active: boolean;
+  isWhitelisted?: boolean;
+  trialDaysRemaining?: number | null;
 }
 
 export interface VideoCategory {
@@ -187,9 +185,19 @@ export async function getSubscriptionStatus(): Promise<SubscriptionStatus | null
 }
 
 export async function checkSubscription(): Promise<SubscriptionStatus> {
-  const response = await makeRequest<SubscriptionStatus>("/api/mobile/subscription");
-  await AsyncStorage.setItem(SUBSCRIPTION_KEY, JSON.stringify(response));
-  return response;
+  try {
+    const response = await makeRequest<SubscriptionStatus>("/api/mobile/subscription");
+    console.log("[Subscription] API response:", JSON.stringify(response));
+    await AsyncStorage.setItem(SUBSCRIPTION_KEY, JSON.stringify(response));
+    return response;
+  } catch (error) {
+    console.log("[Subscription] API error:", error);
+    return {
+      subscriptionStatus: "unknown",
+      active: true,
+      isWhitelisted: false,
+    };
+  }
 }
 
 export async function refreshToken(): Promise<{ token: string }> {
