@@ -117,7 +117,7 @@ async function makeRequest<T>(
 
   if (response.status === 401) {
     await clearAuth();
-    throw new Error("Session expired. Please login again.");
+    throw new Error("Couldn't find account info. Double check credentials. You can reset your password at onetimeonetime.com/login");
   }
 
   if (!response.ok) {
