@@ -263,8 +263,9 @@ export async function getAlbumById(albumId: string): Promise<AlbumItem> {
 }
 
 export function getAlbumThumbnailUrl(albumId: string): { url: string; requiresAuth: boolean } {
+  const cacheBust = Date.now();
   return {
-    url: `${API_BASE_URL}/api/albums/${albumId}/thumbnail`,
+    url: `${API_BASE_URL}/api/albums/${albumId}/thumbnail?v=${cacheBust}`,
     requiresAuth: true,
   };
 }
@@ -275,8 +276,9 @@ export function getAlbumTrackStreamUrl(albumId: string, trackId: string): string
 
 export function getVideoThumbnailUrl(video: VideoItem): { url: string | null; requiresAuth: boolean } {
   if (video.thumbnailPath) {
+    const cacheBust = Date.now();
     return {
-      url: `${API_BASE_URL}/api/videos/${video.id}/thumbnail`,
+      url: `${API_BASE_URL}/api/videos/${video.id}/thumbnail?v=${cacheBust}`,
       requiresAuth: true,
     };
   }
@@ -383,7 +385,6 @@ export async function getContentByCategories(): Promise<CategorySection[]> {
   ]);
 
   const sections: CategorySection[] = [];
-  const categoryMap = new Map(videoCategories.map((c) => [c.id, c.name]));
   
   const contentByCategory = new Map<string, VideoItem[]>();
   allContent.forEach((item) => {
@@ -394,13 +395,43 @@ export async function getContentByCategories(): Promise<CategorySection[]> {
     contentByCategory.get(catId)!.push(item);
   });
 
-  contentByCategory.forEach((categoryItems, categoryId) => {
-    const categoryName = categoryMap.get(categoryId) || formatCategoryName(categoryId);
+  // Iterate over categories in API order (sorted by sortOrder)
+  videoCategories.forEach((category) => {
+    const categoryItems = contentByCategory.get(category.id);
+    if (categoryItems && categoryItems.length > 0) {
+      sections.push({
+        id: `content-${category.id}`,
+        name: category.name,
+        type: "video",
+        items: categoryItems.map((item) => {
+          const isAudio = item.mediaType === "audio";
+          const thumb = getVideoThumbnailUrl(item);
+          const viewedLocally = locallyViewed.has(item.id);
+          return {
+            id: item.id,
+            title: item.title,
+            description: item.description,
+            type: isAudio ? "audio" as ContentType : "video" as ContentType,
+            thumbnailUrl: thumb.url,
+            thumbnailRequiresAuth: thumb.requiresAuth,
+            duration: item.duration,
+            categoryId: item.categoryId,
+            createdAt: item.createdAt,
+            isNew: isVideoNew(item, viewedLocally),
+          };
+        }),
+      });
+    }
+  });
+
+  // Add uncategorized items at the end if any
+  const uncategorizedItems = contentByCategory.get("uncategorized");
+  if (uncategorizedItems && uncategorizedItems.length > 0) {
     sections.push({
-      id: `content-${categoryId}`,
-      name: categoryName,
+      id: "content-uncategorized",
+      name: "Uncategorized",
       type: "video",
-      items: categoryItems.map((item) => {
+      items: uncategorizedItems.map((item) => {
         const isAudio = item.mediaType === "audio";
         const thumb = getVideoThumbnailUrl(item);
         const viewedLocally = locallyViewed.has(item.id);
@@ -418,7 +449,7 @@ export async function getContentByCategories(): Promise<CategorySection[]> {
         };
       }),
     });
-  });
+  }
 
   if (albums.length > 0) {
     sections.push({
