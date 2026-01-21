@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Linking,
   useWindowDimensions,
+  TextInput,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
@@ -32,6 +33,8 @@ export default function HomeScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [settingsVisible, setSettingsVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showTrending, setShowTrending] = useState(true);
   const { width: windowWidth } = useWindowDimensions();
   
   const gridConfig = useMemo(() => {
@@ -92,6 +95,45 @@ export default function HomeScreen() {
     return sections.map((s) => ({ id: s.id, name: s.name }));
   }, [sections]);
 
+  const categoryMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    if (sections) {
+      sections.forEach((s) => {
+        s.items.forEach((item) => {
+          map[item.id] = s.name;
+        });
+      });
+    }
+    return map;
+  }, [sections]);
+
+  const trendingItems = useMemo(() => {
+    if (!allItems.length) return [];
+    return [...allItems]
+      .filter((item) => item.type === "video")
+      .sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0))
+      .slice(0, 10);
+  }, [allItems]);
+
+  const fuzzySearch = (query: string, text: string): boolean => {
+    if (!query) return true;
+    const queryLower = query.toLowerCase();
+    const textLower = text.toLowerCase();
+    if (textLower.includes(queryLower)) return true;
+    let queryIndex = 0;
+    for (let i = 0; i < textLower.length && queryIndex < queryLower.length; i++) {
+      if (textLower[i] === queryLower[queryIndex]) {
+        queryIndex++;
+      }
+    }
+    return queryIndex === queryLower.length;
+  };
+
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    return allItems.filter((item) => fuzzySearch(searchQuery, item.title));
+  }, [searchQuery, allItems]);
+
   const filteredItems = useMemo(() => {
     if (!selectedCategory || !sections) return [];
     const section = sections.find((s) => s.id === selectedCategory);
@@ -112,6 +154,15 @@ export default function HomeScreen() {
   const handleCategoryPress = (categoryId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSelectedCategory(categoryId === selectedCategory ? null : categoryId);
+  };
+
+  const handleToggleTrending = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setShowTrending(!showTrending);
+  };
+
+  const handleClearSearch = () => {
+    setSearchQuery("");
   };
 
   const handleSettingsPress = () => {
@@ -224,8 +275,70 @@ export default function HomeScreen() {
               tintColor={theme.accent}
             />
           }
+          keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.recentSection}>
+          <View style={styles.searchSection}>
+            <View style={[styles.searchContainer, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
+              <Feather name="search" size={18} color={theme.textSecondary} style={styles.searchIcon} />
+              <TextInput
+                style={[styles.searchInput, { color: theme.text }]}
+                placeholder="Search videos..."
+                placeholderTextColor={theme.textSecondary}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                returnKeyType="search"
+                testID="input-search"
+              />
+              {searchQuery.length > 0 ? (
+                <Pressable onPress={handleClearSearch} hitSlop={8} testID="button-clear-search">
+                  <Feather name="x" size={18} color={theme.textSecondary} />
+                </Pressable>
+              ) : null}
+            </View>
+          </View>
+
+          {searchQuery.trim().length > 0 ? (
+            <View style={styles.searchResultsSection}>
+              <View style={styles.sectionHeader}>
+                <Feather name="search" size={18} color={theme.accent} style={styles.sectionIcon} />
+                <ThemedText style={[styles.sectionTitle, { color: theme.text }]}>
+                  Search Results ({searchResults.length})
+                </ThemedText>
+              </View>
+              {searchResults.length > 0 ? (
+                <View style={styles.contentGrid}>
+                  {searchResults.map((item) => (
+                    <View key={item.id} style={[styles.gridItem, { width: gridConfig.cardWidth + Spacing.xs * 2 }]}>
+                      <View style={styles.searchResultCard}>
+                        <ContentCard
+                          item={item}
+                          onPress={() => handleContentPress(item)}
+                          size="medium"
+                          cardWidth={gridConfig.cardWidth}
+                        />
+                        {categoryMap[item.id] ? (
+                          <View style={[styles.categoryBadge, { backgroundColor: theme.accent }]}>
+                            <ThemedText style={[styles.categoryBadgeText, { color: theme.buttonText }]}>
+                              {categoryMap[item.id]}
+                            </ThemedText>
+                          </View>
+                        ) : null}
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <View style={styles.emptySearch}>
+                  <Feather name="search" size={32} color={theme.textSecondary} />
+                  <ThemedText style={[styles.emptyText, { color: theme.textSecondary }]}>
+                    No results found for "{searchQuery}"
+                  </ThemedText>
+                </View>
+              )}
+            </View>
+          ) : (
+            <>
+              <View style={styles.recentSection}>
             <View style={styles.sectionHeader}>
               <Feather name="clock" size={18} color={theme.accent} style={styles.sectionIcon} />
               <ThemedText style={[styles.sectionTitle, { color: theme.text }]}>
@@ -326,6 +439,49 @@ export default function HomeScreen() {
                 Select a category to browse content
               </ThemedText>
             </View>
+          )}
+
+          {trendingItems.length > 0 ? (
+            <View style={styles.trendingSection}>
+              <Pressable onPress={handleToggleTrending} style={styles.trendingHeader}>
+                <View style={styles.sectionHeader}>
+                  <Feather name="trending-up" size={18} color={theme.accent} style={styles.sectionIcon} />
+                  <ThemedText style={[styles.sectionTitle, { color: theme.text }]}>
+                    Trending
+                  </ThemedText>
+                </View>
+                <Feather
+                  name={showTrending ? "chevron-up" : "chevron-down"}
+                  size={20}
+                  color={theme.textSecondary}
+                />
+              </Pressable>
+              {showTrending ? (
+                <FlatList
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  data={trendingItems}
+                  keyExtractor={(item) => `trending-${item.id}`}
+                  renderItem={({ item, index }) => (
+                    <View style={styles.trendingCard}>
+                      <View style={[styles.trendingRank, { backgroundColor: theme.accent }]}>
+                        <ThemedText style={[styles.trendingRankText, { color: theme.buttonText }]}>
+                          {index + 1}
+                        </ThemedText>
+                      </View>
+                      <ContentCard
+                        item={item}
+                        onPress={() => handleContentPress(item)}
+                        size="small"
+                      />
+                    </View>
+                  )}
+                  contentContainerStyle={styles.trendingItems}
+                />
+              ) : null}
+            </View>
+          ) : null}
+            </>
           )}
         </ScrollView>
       )}
@@ -485,5 +641,82 @@ const styles = StyleSheet.create({
   refreshButtonText: {
     fontSize: 14,
     fontWeight: "500",
+  },
+  searchSection: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.sm,
+  },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    paddingHorizontal: Spacing.md,
+    height: 44,
+  },
+  searchIcon: {
+    marginRight: Spacing.sm,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    height: "100%",
+  },
+  searchResultsSection: {
+    paddingTop: Spacing.md,
+    marginBottom: Spacing.lg,
+  },
+  searchResultCard: {
+    position: "relative",
+  },
+  categoryBadge: {
+    position: "absolute",
+    bottom: Spacing.sm,
+    left: Spacing.sm,
+    paddingVertical: 2,
+    paddingHorizontal: Spacing.sm,
+    borderRadius: BorderRadius.sm,
+  },
+  categoryBadgeText: {
+    fontSize: 10,
+    fontWeight: "600",
+  },
+  emptySearch: {
+    paddingVertical: Spacing["3xl"],
+    alignItems: "center",
+    paddingHorizontal: Spacing.lg,
+  },
+  trendingSection: {
+    paddingTop: Spacing.lg,
+    marginBottom: Spacing.lg,
+  },
+  trendingHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: Spacing.lg,
+    marginBottom: Spacing.md,
+  },
+  trendingItems: {
+    paddingHorizontal: Spacing.lg,
+  },
+  trendingCard: {
+    position: "relative",
+  },
+  trendingRank: {
+    position: "absolute",
+    top: Spacing.sm,
+    left: Spacing.sm,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 1,
+  },
+  trendingRankText: {
+    fontSize: 12,
+    fontWeight: "bold",
   },
 });
