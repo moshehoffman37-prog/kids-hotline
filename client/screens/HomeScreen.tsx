@@ -339,148 +339,148 @@ export default function HomeScreen() {
           ) : (
             <>
               <View style={styles.recentSection}>
-            <View style={styles.sectionHeader}>
-              <Feather name="clock" size={18} color={theme.accent} style={styles.sectionIcon} />
-              <ThemedText style={[styles.sectionTitle, { color: theme.text }]}>
-                Recent
-              </ThemedText>
-            </View>
-            {recentItems.length > 0 ? (
-              <FlatList
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                data={recentItems}
-                keyExtractor={(item) => `recent-${item.id}`}
-                renderItem={({ item }) => (
-                  <ContentCard
-                    item={item}
-                    onPress={() => handleContentPress(item)}
-                    size="small"
-                  />
-                )}
-                contentContainerStyle={styles.recentItems}
-              />
-            ) : (
-              <View style={styles.emptyRecent}>
-                <ThemedText style={[styles.emptyText, { color: theme.textSecondary }]}>
-                  No recent content
-                </ThemedText>
-              </View>
-            )}
-          </View>
-
-          <View style={styles.categoriesSection}>
-            <View style={styles.sectionHeader}>
-              <Feather name="folder" size={18} color={theme.accent} style={styles.sectionIcon} />
-              <ThemedText style={[styles.sectionTitle, { color: theme.text }]}>
-                Categories
-              </ThemedText>
-            </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.categoryChips}
-            >
-              {categories.map((category) => {
-                const isSelected = category.id === selectedCategory;
-                return (
-                  <Pressable
-                    key={category.id}
-                    onPress={() => handleCategoryPress(category.id)}
-                    style={[
-                      styles.categoryChip,
-                      {
-                        backgroundColor: isSelected ? theme.accent : theme.backgroundSecondary,
-                        borderColor: isSelected ? theme.accent : theme.border,
-                      },
-                    ]}
-                  >
-                    <ThemedText
-                      style={[
-                        styles.categoryChipText,
-                        { color: isSelected ? theme.buttonText : theme.text },
-                      ]}
-                    >
-                      {category.name}
-                    </ThemedText>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          </View>
-
-          {selectedCategory ? (
-            <View style={styles.filteredContent}>
-              <View style={styles.contentGrid}>
-                {filteredItems.map((item) => (
-                  <View key={item.id} style={[styles.gridItem, { width: gridConfig.cardWidth + Spacing.xs * 2 }]}>
-                    <ContentCard
-                      item={item}
-                      onPress={() => handleContentPress(item)}
-                      size="medium"
-                      cardWidth={gridConfig.cardWidth}
-                    />
-                  </View>
-                ))}
-              </View>
-              {filteredItems.length === 0 ? (
-                <View style={styles.emptyCategory}>
-                  <Feather name="inbox" size={32} color={theme.textSecondary} />
-                  <ThemedText style={[styles.emptyText, { color: theme.textSecondary }]}>
-                    No content in this category
-                  </ThemedText>
-                </View>
-              ) : null}
-            </View>
-          ) : (
-            <View style={styles.selectCategoryHint}>
-              <Feather name="arrow-up" size={24} color={theme.textSecondary} />
-              <ThemedText style={[styles.hintText, { color: theme.textSecondary }]}>
-                Select a category to browse content
-              </ThemedText>
-            </View>
-          )}
-
-          {trendingItems.length > 0 ? (
-            <View style={styles.trendingSection}>
-              <Pressable onPress={handleToggleTrending} style={styles.trendingHeader}>
                 <View style={styles.sectionHeader}>
-                  <Feather name="trending-up" size={18} color={theme.accent} style={styles.sectionIcon} />
+                  <Feather name="clock" size={18} color={theme.accent} style={styles.sectionIcon} />
                   <ThemedText style={[styles.sectionTitle, { color: theme.text }]}>
-                    Trending
+                    Recent
                   </ThemedText>
                 </View>
-                <Feather
-                  name={showTrending ? "chevron-up" : "chevron-down"}
-                  size={20}
-                  color={theme.textSecondary}
-                />
-              </Pressable>
-              {showTrending ? (
-                <FlatList
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  data={trendingItems}
-                  keyExtractor={(item) => `trending-${item.id}`}
-                  renderItem={({ item, index }) => (
-                    <View style={styles.trendingCard}>
-                      <View style={[styles.trendingRank, { backgroundColor: theme.accent }]}>
-                        <ThemedText style={[styles.trendingRankText, { color: theme.buttonText }]}>
-                          {index + 1}
-                        </ThemedText>
-                      </View>
+                {recentItems.length > 0 ? (
+                  <FlatList
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    data={recentItems}
+                    keyExtractor={(item) => `recent-${item.id}`}
+                    renderItem={({ item }) => (
                       <ContentCard
                         item={item}
                         onPress={() => handleContentPress(item)}
                         size="small"
                       />
+                    )}
+                    contentContainerStyle={styles.recentItems}
+                  />
+                ) : (
+                  <View style={styles.emptyRecent}>
+                    <ThemedText style={[styles.emptyText, { color: theme.textSecondary }]}>
+                      No recent content
+                    </ThemedText>
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.categoriesSection}>
+                <View style={styles.sectionHeader}>
+                  <Feather name="folder" size={18} color={theme.accent} style={styles.sectionIcon} />
+                  <ThemedText style={[styles.sectionTitle, { color: theme.text }]}>
+                    Categories
+                  </ThemedText>
+                </View>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.categoryChips}
+                >
+                  {categories.map((category) => {
+                    const isSelected = category.id === selectedCategory;
+                    return (
+                      <Pressable
+                        key={category.id}
+                        onPress={() => handleCategoryPress(category.id)}
+                        style={[
+                          styles.categoryChip,
+                          {
+                            backgroundColor: isSelected ? theme.accent : theme.backgroundSecondary,
+                            borderColor: isSelected ? theme.accent : theme.border,
+                          },
+                        ]}
+                      >
+                        <ThemedText
+                          style={[
+                            styles.categoryChipText,
+                            { color: isSelected ? theme.buttonText : theme.text },
+                          ]}
+                        >
+                          {category.name}
+                        </ThemedText>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+
+              {selectedCategory ? (
+                <View style={styles.filteredContent}>
+                  <View style={styles.contentGrid}>
+                    {filteredItems.map((item) => (
+                      <View key={item.id} style={[styles.gridItem, { width: gridConfig.cardWidth + Spacing.xs * 2 }]}>
+                        <ContentCard
+                          item={item}
+                          onPress={() => handleContentPress(item)}
+                          size="medium"
+                          cardWidth={gridConfig.cardWidth}
+                        />
+                      </View>
+                    ))}
+                  </View>
+                  {filteredItems.length === 0 ? (
+                    <View style={styles.emptyCategory}>
+                      <Feather name="inbox" size={32} color={theme.textSecondary} />
+                      <ThemedText style={[styles.emptyText, { color: theme.textSecondary }]}>
+                        No content in this category
+                      </ThemedText>
                     </View>
-                  )}
-                  contentContainerStyle={styles.trendingItems}
-                />
+                  ) : null}
+                </View>
+              ) : (
+                <View style={styles.selectCategoryHint}>
+                  <Feather name="arrow-up" size={24} color={theme.textSecondary} />
+                  <ThemedText style={[styles.hintText, { color: theme.textSecondary }]}>
+                    Select a category to browse content
+                  </ThemedText>
+                </View>
+              )}
+
+              {trendingItems.length > 0 ? (
+                <View style={styles.trendingSection}>
+                  <Pressable onPress={handleToggleTrending} style={styles.trendingHeader}>
+                    <View style={styles.sectionHeader}>
+                      <Feather name="trending-up" size={18} color={theme.accent} style={styles.sectionIcon} />
+                      <ThemedText style={[styles.sectionTitle, { color: theme.text }]}>
+                        Trending
+                      </ThemedText>
+                    </View>
+                    <Feather
+                      name={showTrending ? "chevron-up" : "chevron-down"}
+                      size={20}
+                      color={theme.textSecondary}
+                    />
+                  </Pressable>
+                  {showTrending ? (
+                    <FlatList
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      data={trendingItems}
+                      keyExtractor={(item) => `trending-${item.id}`}
+                      renderItem={({ item, index }) => (
+                        <View style={styles.trendingCard}>
+                          <View style={[styles.trendingRank, { backgroundColor: theme.accent }]}>
+                            <ThemedText style={[styles.trendingRankText, { color: theme.buttonText }]}>
+                              {index + 1}
+                            </ThemedText>
+                          </View>
+                          <ContentCard
+                            item={item}
+                            onPress={() => handleContentPress(item)}
+                            size="small"
+                          />
+                        </View>
+                      )}
+                      contentContainerStyle={styles.trendingItems}
+                    />
+                  ) : null}
+                </View>
               ) : null}
-            </View>
-          ) : null}
             </>
           )}
         </ScrollView>
