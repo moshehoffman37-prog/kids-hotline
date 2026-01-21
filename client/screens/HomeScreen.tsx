@@ -369,6 +369,40 @@ export default function HomeScreen() {
                 )}
               </View>
 
+              {trendingItems.length > 0 ? (
+                <View style={styles.trendingSection}>
+                  <Pressable onPress={handleToggleTrending} style={styles.trendingHeader}>
+                    <View style={styles.sectionHeader}>
+                      <Feather name="trending-up" size={18} color={theme.accent} style={styles.sectionIcon} />
+                      <ThemedText style={[styles.sectionTitle, { color: theme.text }]}>
+                        Trending
+                      </ThemedText>
+                    </View>
+                    <Feather
+                      name={showTrending ? "chevron-up" : "chevron-down"}
+                      size={20}
+                      color={theme.textSecondary}
+                    />
+                  </Pressable>
+                  {showTrending ? (
+                    <FlatList
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      data={trendingItems}
+                      keyExtractor={(item) => `trending-${item.id}`}
+                      renderItem={({ item }) => (
+                        <ContentCard
+                          item={item}
+                          onPress={() => handleContentPress(item)}
+                          size="small"
+                        />
+                      )}
+                      contentContainerStyle={styles.trendingItems}
+                    />
+                  ) : null}
+                </View>
+              ) : null}
+
               <View style={styles.categoriesSection}>
                 <View style={styles.sectionHeader}>
                   <Feather name="folder" size={18} color={theme.accent} style={styles.sectionIcon} />
@@ -440,47 +474,6 @@ export default function HomeScreen() {
                   </ThemedText>
                 </View>
               )}
-
-              {trendingItems.length > 0 ? (
-                <View style={styles.trendingSection}>
-                  <Pressable onPress={handleToggleTrending} style={styles.trendingHeader}>
-                    <View style={styles.sectionHeader}>
-                      <Feather name="trending-up" size={18} color={theme.accent} style={styles.sectionIcon} />
-                      <ThemedText style={[styles.sectionTitle, { color: theme.text }]}>
-                        Trending
-                      </ThemedText>
-                    </View>
-                    <Feather
-                      name={showTrending ? "chevron-up" : "chevron-down"}
-                      size={20}
-                      color={theme.textSecondary}
-                    />
-                  </Pressable>
-                  {showTrending ? (
-                    <FlatList
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      data={trendingItems}
-                      keyExtractor={(item) => `trending-${item.id}`}
-                      renderItem={({ item, index }) => (
-                        <View style={styles.trendingCard}>
-                          <View style={[styles.trendingRank, { backgroundColor: theme.accent }]}>
-                            <ThemedText style={[styles.trendingRankText, { color: theme.buttonText }]}>
-                              {index + 1}
-                            </ThemedText>
-                          </View>
-                          <ContentCard
-                            item={item}
-                            onPress={() => handleContentPress(item)}
-                            size="small"
-                          />
-                        </View>
-                      )}
-                      contentContainerStyle={styles.trendingItems}
-                    />
-                  ) : null}
-                </View>
-              ) : null}
             </>
           )}
         </ScrollView>
@@ -700,23 +693,5 @@ const styles = StyleSheet.create({
   },
   trendingItems: {
     paddingHorizontal: Spacing.lg,
-  },
-  trendingCard: {
-    position: "relative",
-  },
-  trendingRank: {
-    position: "absolute",
-    top: Spacing.sm,
-    left: Spacing.sm,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 1,
-  },
-  trendingRankText: {
-    fontSize: 12,
-    fontWeight: "bold",
   },
 });
