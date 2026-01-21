@@ -30,24 +30,29 @@ export interface VideoItem {
   title: string;
   description?: string | null;
   mediaType?: "video" | "audio";
-  storageType?: "local" | "bunny_storage" | "bunny";
+  storageType?: "local" | "bunny_storage" | "bunny" | "vimeo";
   thumbnailPath?: string | null;
   bunnyThumbnailUrl?: string | null;
   bunnyStorageUrl?: string | null;
   bunnyGuid?: string | null;
+  vimeoVideoId?: string | null;
+  vimeoThumbnailUrl?: string | null;
   categoryId?: string | null;
   status?: string;
   duration?: number | null;
   createdAt?: string;
   viewed?: boolean;
+  viewCount?: number;
 }
 
 export interface StreamResponse {
   bunny?: boolean;
   bunnyStorage?: boolean;
+  vimeo?: boolean;
   embedUrl?: string;
   cdnUrl?: string;
   hlsUrl?: string;
+  vimeoVideoId?: string;
   mediaType?: "video" | "audio";
 }
 
@@ -107,8 +112,10 @@ export interface ContentItem {
   trackCount?: number;
   category?: string;
   categoryId?: string | null;
+  categoryName?: string | null;
   createdAt?: string;
   isNew?: boolean;
+  viewCount?: number;
 }
 
 export interface CategorySection {
@@ -258,6 +265,10 @@ export async function getAlbums(): Promise<AlbumItem[]> {
   return makeRequest<AlbumItem[]>("/api/albums");
 }
 
+export async function getTrendingVideos(): Promise<VideoItem[]> {
+  return makeRequest<VideoItem[]>("/api/videos/trending");
+}
+
 export async function getAlbumById(albumId: string): Promise<AlbumItem> {
   return makeRequest<AlbumItem>(`/api/albums/${albumId}`);
 }
@@ -275,6 +286,12 @@ export function getAlbumTrackStreamUrl(albumId: string, trackId: string): string
 }
 
 export function getVideoThumbnailUrl(video: VideoItem): { url: string | null; requiresAuth: boolean } {
+  if (video.vimeoThumbnailUrl) {
+    return {
+      url: video.vimeoThumbnailUrl,
+      requiresAuth: false,
+    };
+  }
   if (video.thumbnailPath) {
     const cacheBust = Date.now();
     return {
@@ -416,6 +433,7 @@ export async function getContentByCategories(): Promise<CategorySection[]> {
             thumbnailRequiresAuth: thumb.requiresAuth,
             duration: item.duration,
             categoryId: item.categoryId,
+            categoryName: category.name,
             createdAt: item.createdAt,
             isNew: isVideoNew(item, viewedLocally),
           };
@@ -444,6 +462,7 @@ export async function getContentByCategories(): Promise<CategorySection[]> {
           thumbnailRequiresAuth: thumb.requiresAuth,
           duration: item.duration,
           categoryId: item.categoryId,
+          categoryName: "Uncategorized",
           createdAt: item.createdAt,
           isNew: isVideoNew(item, viewedLocally),
         };
