@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Pressable, Dimensions, useWindowDimensions } from "react-native";
+import React, { useState, useEffect, useCallback } from "react";
+import { StyleSheet, View, Pressable, Dimensions, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -23,6 +23,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 export function ContentCard({ item, onPress, size = "medium", cardWidth: propCardWidth }: ContentCardProps) {
   const { theme } = useTheme();
   const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
   const [authToken, setAuthToken] = useState<string | null>(null);
 
   useEffect(() => {
@@ -30,6 +31,15 @@ export function ContentCard({ item, onPress, size = "medium", cardWidth: propCar
       AsyncStorage.getItem(AUTH_TOKEN_KEY).then(setAuthToken);
     }
   }, [item.thumbnailRequiresAuth]);
+
+  const handleImageLoad = useCallback(() => {
+    setImageLoading(false);
+  }, []);
+
+  const handleImageError = useCallback(() => {
+    setImageError(true);
+    setImageLoading(false);
+  }, []);
 
   const cardWidth = propCardWidth ? propCardWidth : size === "small" ? 140 : size === "large" ? SCREEN_WIDTH - Spacing.lg * 2 : "100%";
   const cardHeight = propCardWidth ? propCardWidth : size === "small" ? 140 : size === "large" ? 200 : undefined;
@@ -87,13 +97,23 @@ export function ContentCard({ item, onPress, size = "medium", cardWidth: propCar
             <Feather name={getTypeIcon()} size={32} color={theme.textSecondary} />
           </View>
         ) : (
-          <Image
-            source={imageSource}
-            style={[styles.image, { borderRadius: BorderRadius.xs }]}
-            contentFit="cover"
-            transition={200}
-            onError={() => setImageError(true)}
-          />
+          <>
+            {imageLoading ? (
+              <View style={[styles.placeholderImage, { backgroundColor: theme.backgroundSecondary, borderRadius: BorderRadius.xs, position: 'absolute', zIndex: 1 }]}>
+                <ActivityIndicator size="small" color={theme.accent} />
+              </View>
+            ) : null}
+            <Image
+              source={imageSource}
+              style={[styles.image, { borderRadius: BorderRadius.xs }]}
+              contentFit="cover"
+              transition={300}
+              priority="low"
+              onLoad={handleImageLoad}
+              onError={handleImageError}
+              cachePolicy="memory-disk"
+            />
+          </>
         )}
         {item.duration ? (
           <View style={styles.duration}>
