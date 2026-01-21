@@ -8,9 +8,11 @@ Kids' Hotline is a secure content streaming mobile application for families. Par
 
 - Login with existing onetimeonetime.com credentials
 - Browse content by categories (auto-detected from your API)
-- Video streaming via Bunny Stream embed URLs
+- **Search bar** with fuzzy matching to find videos by title
+- **Trending section** showing top 10 most viewed videos (collapsible)
+- Video streaming via Vimeo embedded player (domain-restricted for security)
 - Audio playback with streaming endpoint
-- Document/image viewing via pages endpoint
+- Document/image viewing via pages endpoint with navigation buttons
 - Simple logout option in header
 - Links to website for account management and password reset
 
@@ -46,14 +48,16 @@ All requests after login include `Authorization: Bearer <token>` header.
 
 2. **Home Screen** - After login, shows:
    - Header with One Time One Time logo and Logout button
+   - Search bar with fuzzy search
    - "Recent" section with latest content
+   - Collapsible "Trending" section with top 10 most viewed videos
    - Category filter pills (auto-generated from content)
    - Grid of content cards with thumbnails
 
 3. **Content Player** - Tapping a card opens:
-   - Video: Native HLS playback via expo-video (no browser required)
+   - Video: Vimeo embedded player via WebView (autoplay, no title/byline)
    - Audio: Native audio player with play/pause and progress bar
-   - Document: Image viewer with pinch-to-zoom and 2-finger pan
+   - Document: Image viewer with pinch-to-zoom and navigation buttons
 
 ## Project Structure
 
@@ -82,9 +86,9 @@ assets/images/
 
 | Type | Source | Player |
 |------|--------|--------|
-| video | embedUrl from API | Native HLS playback via expo-video (no browser required) |
+| video | vimeoVideoId from API | Vimeo embedded player via WebView (autoplay, no title/byline) |
 | audio | /api/audio-files/:id/stream | expo-av Audio player |
-| document | /api/documents/:id/pages | Image viewer with pinch-to-zoom |
+| document | /api/documents/:id/pages | Image viewer with pinch-to-zoom and page navigation |
 
 ## User Preferences
 
