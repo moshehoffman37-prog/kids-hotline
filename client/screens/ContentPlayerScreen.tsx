@@ -322,7 +322,7 @@ export default function ContentPlayerScreen() {
     }
 
     if (vimeoVideoId) {
-      const vimeoEmbedUrl = `https://player.vimeo.com/video/${vimeoVideoId}?autoplay=1&playsinline=1&title=0&byline=0&portrait=0`;
+      const vimeoEmbedUrl = `https://player.vimeo.com/video/${vimeoVideoId}?autoplay=1&muted=0&playsinline=1&title=0&byline=0&portrait=0&background=0&controls=1`;
       
       if (Platform.OS === "web") {
         return (
