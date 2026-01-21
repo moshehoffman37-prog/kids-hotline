@@ -180,13 +180,26 @@ export default function HomeScreen() {
     refetchSubscription();
   };
 
-  if (isLoading) {
-    return (
-      <View style={[styles.loadingContainer, { backgroundColor: theme.backgroundRoot }]}>
-        <ActivityIndicator size="large" color={theme.accent} />
+  const SkeletonCard = ({ width }: { width: number }) => (
+    <View style={[styles.skeletonCard, { width, marginRight: Spacing.md }]}>
+      <View style={[styles.skeletonImage, { backgroundColor: theme.backgroundSecondary, aspectRatio: 16/9 }]} />
+      <View style={[styles.skeletonTitle, { backgroundColor: theme.backgroundSecondary }]} />
+    </View>
+  );
+
+  const SkeletonSection = ({ title }: { title: string }) => (
+    <View style={styles.recentSection}>
+      <View style={styles.sectionHeader}>
+        <View style={[styles.skeletonIcon, { backgroundColor: theme.backgroundSecondary }]} />
+        <ThemedText style={[styles.sectionTitle, { color: theme.text }]}>{title}</ThemedText>
       </View>
-    );
-  }
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.recentItems}>
+        <SkeletonCard width={140} />
+        <SkeletonCard width={140} />
+        <SkeletonCard width={140} />
+      </ScrollView>
+    </View>
+  );
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
@@ -336,6 +349,12 @@ export default function HomeScreen() {
                 </View>
               )}
             </View>
+          ) : isLoading ? (
+            <>
+              <SkeletonSection title="Recent" />
+              <SkeletonSection title="Trending" />
+              <SkeletonSection title="Categories" />
+            </>
           ) : (
             <>
               <View style={styles.recentSection}>
@@ -693,5 +712,24 @@ const styles = StyleSheet.create({
   },
   trendingItems: {
     paddingHorizontal: Spacing.lg,
+  },
+  skeletonCard: {
+    overflow: "hidden",
+  },
+  skeletonImage: {
+    width: "100%",
+    borderRadius: BorderRadius.xs,
+  },
+  skeletonTitle: {
+    height: 14,
+    width: "80%",
+    borderRadius: 4,
+    marginTop: Spacing.sm,
+  },
+  skeletonIcon: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    marginRight: Spacing.sm,
   },
 });
