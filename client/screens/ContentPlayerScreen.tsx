@@ -109,6 +109,7 @@ export default function ContentPlayerScreen() {
   const [documentPages, setDocumentPages] = useState<string[]>([]);
   const [videoEmbedUrl, setVideoEmbedUrl] = useState<string | null>(null);
   const [videoHlsUrl, setVideoHlsUrl] = useState<string | null>(null);
+  const [vimeoVideoId, setVimeoVideoId] = useState<string | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
   const [audioStreamUrl, setAudioStreamUrl] = useState<string | null>(null);
   const [playbackRate, setPlaybackRate] = useState(1.0);
@@ -144,6 +145,8 @@ export default function ContentPlayerScreen() {
     if (item.type === "video" || item.type === "audio") {
       setIsLoading(true);
       setVideoError(null);
+      setVimeoVideoId(null);
+      setVideoHlsUrl(null);
       
       api.markVideoViewed(item.id).catch((error) => {
         console.log("Failed to mark as viewed:", error);
@@ -153,6 +156,8 @@ export default function ContentPlayerScreen() {
         .then((response) => {
           if (item.type === "audio" && response.cdnUrl) {
             setAudioStreamUrl(response.cdnUrl);
+          } else if (item.type === "video" && response.vimeo && response.vimeoVideoId) {
+            setVimeoVideoId(response.vimeoVideoId);
           } else if (item.type === "video" && response.embedUrl) {
             const accentColor = theme.accent.replace("#", "");
             const separator = response.embedUrl.includes("?") ? "&" : "?";
@@ -302,12 +307,12 @@ export default function ContentPlayerScreen() {
       );
     }
 
-    if (videoError || !videoEmbedUrl) {
+    if (videoError) {
       return (
         <View style={[styles.errorContainer, { backgroundColor: theme.backgroundSecondary }]}>
           <Feather name="alert-circle" size={32} color={theme.textSecondary} />
           <ThemedText style={[styles.errorText, { color: theme.textSecondary }]}>
-            {videoError || "Video is processing or not yet available"}
+            {videoError}
           </ThemedText>
           <ThemedText style={[styles.errorSubtext, { color: theme.textSecondary }]}>
             Please check back later
@@ -316,18 +321,42 @@ export default function ContentPlayerScreen() {
       );
     }
 
-    if (Platform.OS === "web") {
+    if (vimeoVideoId) {
+      const vimeoEmbedUrl = `https://player.vimeo.com/video/${vimeoVideoId}?autoplay=1&playsinline=1&title=0&byline=0&portrait=0`;
+      
+      if (Platform.OS === "web") {
+        return (
+          <View style={styles.videoContainer}>
+            <iframe
+              src={vimeoEmbedUrl}
+              style={{
+                width: "100%",
+                height: "100%",
+                border: "none",
+              }}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+              allowFullScreen
+            />
+          </View>
+        );
+      }
+      
       return (
         <View style={styles.videoContainer}>
-          <iframe
-            src={videoEmbedUrl}
-            style={{
-              width: "100%",
-              height: "100%",
-              border: "none",
-            }}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-            allowFullScreen
+          <WebView
+            source={{ uri: vimeoEmbedUrl }}
+            style={styles.webview}
+            allowsFullscreenVideo
+            allowsInlineMediaPlayback
+            mediaPlaybackRequiresUserAction={false}
+            javaScriptEnabled
+            domStorageEnabled
+            startInLoadingState
+            renderLoading={() => (
+              <View style={styles.loadingOverlay}>
+                <ActivityIndicator size="large" color={theme.accent} />
+              </View>
+            )}
           />
         </View>
       );
@@ -337,11 +366,30 @@ export default function ContentPlayerScreen() {
       return <NativeVideoPlayer hlsUrl={videoHlsUrl} />;
     }
 
+    if (videoEmbedUrl) {
+      if (Platform.OS === "web") {
+        return (
+          <View style={styles.videoContainer}>
+            <iframe
+              src={videoEmbedUrl}
+              style={{
+                width: "100%",
+                height: "100%",
+                border: "none",
+              }}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+              allowFullScreen
+            />
+          </View>
+        );
+      }
+    }
+
     return (
       <View style={[styles.errorContainer, { backgroundColor: theme.backgroundSecondary }]}>
         <Feather name="alert-circle" size={32} color={theme.textSecondary} />
         <ThemedText style={[styles.errorText, { color: theme.textSecondary }]}>
-          Video format not supported
+          Video not available
         </ThemedText>
       </View>
     );
