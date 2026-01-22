@@ -91,22 +91,22 @@ export function ContentCard({ item, onPress, size = "medium", cardWidth: propCar
         },
       ]}
     >
-      <View style={[styles.imageContainer, { height: size === "large" ? cardHeight : undefined, aspectRatio: size !== "large" ? 16/9 : undefined, borderRadius: BorderRadius.xs }]}>
+      <View style={[styles.imageContainer, { height: size === "large" ? cardHeight : undefined, aspectRatio: size !== "large" ? 16/9 : undefined, borderRadius: BorderRadius.xs, backgroundColor: item.type === "audio" ? "#000000" : theme.backgroundSecondary }]}>
         {showPlaceholder ? (
-          <View style={[styles.placeholderImage, { backgroundColor: theme.backgroundSecondary, borderRadius: BorderRadius.xs }]}>
+          <View style={[styles.placeholderImage, { backgroundColor: item.type === "audio" ? "#000000" : theme.backgroundSecondary, borderRadius: BorderRadius.xs }]}>
             <Feather name={getTypeIcon()} size={32} color={theme.textSecondary} />
           </View>
         ) : (
           <>
             {imageLoading ? (
-              <View style={[styles.placeholderImage, { backgroundColor: theme.backgroundSecondary, borderRadius: BorderRadius.xs, position: 'absolute', zIndex: 1 }]}>
+              <View style={[styles.placeholderImage, { backgroundColor: item.type === "audio" ? "#000000" : theme.backgroundSecondary, borderRadius: BorderRadius.xs, position: 'absolute', zIndex: 1 }]}>
                 <ActivityIndicator size="small" color={theme.accent} />
               </View>
             ) : null}
             <Image
               source={imageSource}
               style={[styles.image, { borderRadius: BorderRadius.xs }]}
-              contentFit="cover"
+              contentFit={item.type === "audio" ? "contain" : "cover"}
               transition={300}
               priority="low"
               onLoad={handleImageLoad}
