@@ -199,6 +199,26 @@ export default function ContentPlayerScreen() {
     };
   }, [sound]);
 
+  // Auto-play audio when stream URL is available
+  useEffect(() => {
+    if (item.type === "audio" && audioStreamUrl && !sound) {
+      const loadAndPlayAudio = async () => {
+        try {
+          const { sound: newSound } = await Audio.Sound.createAsync(
+            { uri: audioStreamUrl },
+            { shouldPlay: true, rate: playbackRate, shouldCorrectPitch: true },
+            onAudioStatusUpdate
+          );
+          setSound(newSound);
+          setIsPlaying(true);
+        } catch (error) {
+          console.error("Error auto-loading audio:", error);
+        }
+      };
+      loadAndPlayAudio();
+    }
+  }, [audioStreamUrl, item.type]);
+
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (sound) {
@@ -322,7 +342,7 @@ export default function ContentPlayerScreen() {
     }
 
     if (vimeoVideoId) {
-      const vimeoEmbedUrl = `https://player.vimeo.com/video/${vimeoVideoId}?autoplay=1&muted=0&playsinline=1&title=0&byline=0&portrait=0&background=0&controls=1`;
+      const vimeoEmbedUrl = `https://player.vimeo.com/video/${vimeoVideoId}?autoplay=1&muted=0&playsinline=1&title=0&byline=0&portrait=0&background=0&controls=1&transparent=0&dnt=1`;
       
       if (Platform.OS === "web") {
         return (
@@ -341,22 +361,54 @@ export default function ContentPlayerScreen() {
         );
       }
       
+      // Use HTML wrapper for better iOS compatibility
+      const vimeoHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
+            iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
+          </style>
+        </head>
+        <body>
+          <iframe 
+            src="${vimeoEmbedUrl}"
+            allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+            allowfullscreen
+            webkitallowfullscreen
+            mozallowfullscreen>
+          </iframe>
+        </body>
+        </html>
+      `;
+      
       return (
         <View style={styles.videoContainer}>
           <WebView
-            source={{ uri: vimeoEmbedUrl }}
+            source={{ html: vimeoHtml }}
             style={styles.webview}
             allowsFullscreenVideo
             allowsInlineMediaPlayback
             mediaPlaybackRequiresUserAction={false}
             javaScriptEnabled
             domStorageEnabled
+            scrollEnabled={false}
+            bounces={false}
+            originWhitelist={['*']}
+            mixedContentMode="compatibility"
             startInLoadingState
             renderLoading={() => (
               <View style={styles.loadingOverlay}>
                 <ActivityIndicator size="large" color={theme.accent} />
               </View>
             )}
+            onError={(syntheticEvent) => {
+              const { nativeEvent } = syntheticEvent;
+              console.log('WebView error:', nativeEvent);
+            }}
           />
         </View>
       );
