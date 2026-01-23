@@ -361,34 +361,11 @@ export default function ContentPlayerScreen() {
         );
       }
       
-      // Use HTML wrapper for better iOS compatibility
-      const vimeoHtml = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-          <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
-            iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
-          </style>
-        </head>
-        <body>
-          <iframe 
-            src="${vimeoEmbedUrl}"
-            allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
-            allowfullscreen
-            webkitallowfullscreen
-            mozallowfullscreen>
-          </iframe>
-        </body>
-        </html>
-      `;
-      
+      // iOS: Load Vimeo URL directly for better compatibility
       return (
         <View style={styles.videoContainer}>
           <WebView
-            source={{ html: vimeoHtml }}
+            source={{ uri: vimeoEmbedUrl }}
             style={styles.webview}
             allowsFullscreenVideo
             allowsInlineMediaPlayback
@@ -398,7 +375,11 @@ export default function ContentPlayerScreen() {
             scrollEnabled={false}
             bounces={false}
             originWhitelist={['*']}
-            mixedContentMode="compatibility"
+            mixedContentMode="always"
+            allowsBackForwardNavigationGestures={false}
+            cacheEnabled
+            thirdPartyCookiesEnabled
+            sharedCookiesEnabled
             startInLoadingState
             renderLoading={() => (
               <View style={styles.loadingOverlay}>
@@ -408,6 +389,14 @@ export default function ContentPlayerScreen() {
             onError={(syntheticEvent) => {
               const { nativeEvent } = syntheticEvent;
               console.log('WebView error:', nativeEvent);
+              setVideoError('Could not load video player');
+            }}
+            onHttpError={(syntheticEvent) => {
+              const { nativeEvent } = syntheticEvent;
+              console.log('WebView HTTP error:', nativeEvent.statusCode);
+              if (nativeEvent.statusCode >= 400) {
+                setVideoError(`Video unavailable (${nativeEvent.statusCode})`);
+              }
             }}
           />
         </View>
