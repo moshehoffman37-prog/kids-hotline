@@ -342,13 +342,13 @@ export default function ContentPlayerScreen() {
     }
 
     if (vimeoVideoId) {
-      const vimeoEmbedUrl = `https://player.vimeo.com/video/${vimeoVideoId}?autoplay=1&muted=0&playsinline=1&title=0&byline=0&portrait=0&background=0&controls=1&transparent=0&dnt=1`;
+      const vimeoPlayerUrl = `https://player.vimeo.com/video/${vimeoVideoId}?playsinline=1&autoplay=1&muted=0&title=0&byline=0&portrait=0&controls=1`;
       
       if (Platform.OS === "web") {
         return (
           <View style={styles.videoContainer}>
             <iframe
-              src={vimeoEmbedUrl}
+              src={vimeoPlayerUrl}
               style={{
                 width: "100%",
                 height: "100%",
@@ -361,25 +361,30 @@ export default function ContentPlayerScreen() {
         );
       }
       
-      // iOS: Load Vimeo URL directly for better compatibility
+      // HTML injection method - works around react-native-webview Vimeo bug on iOS
+      const vimeoHtml = `<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>*{margin:0;padding:0}html,body{width:100%;height:100%;background:#000;overflow:hidden}iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:none}</style>
+</head>
+<body>
+<iframe src="${vimeoPlayerUrl}" frameborder="0" allow="autoplay;fullscreen;picture-in-picture" allowfullscreen webkitallowfullscreen></iframe>
+</body>
+</html>`;
+
       return (
         <View style={styles.videoContainer}>
           <WebView
-            source={{ uri: vimeoEmbedUrl }}
+            source={{ html: vimeoHtml, baseUrl: 'https://player.vimeo.com' }}
             style={styles.webview}
             allowsFullscreenVideo
-            allowsInlineMediaPlayback
+            allowsInlineMediaPlayback={true}
             mediaPlaybackRequiresUserAction={false}
-            javaScriptEnabled
-            domStorageEnabled
+            javaScriptEnabled={true}
             scrollEnabled={false}
             bounces={false}
             originWhitelist={['*']}
-            mixedContentMode="always"
-            allowsBackForwardNavigationGestures={false}
-            cacheEnabled
-            thirdPartyCookiesEnabled
-            sharedCookiesEnabled
             startInLoadingState
             renderLoading={() => (
               <View style={styles.loadingOverlay}>
@@ -390,13 +395,6 @@ export default function ContentPlayerScreen() {
               const { nativeEvent } = syntheticEvent;
               console.log('WebView error:', nativeEvent);
               setVideoError('Could not load video player');
-            }}
-            onHttpError={(syntheticEvent) => {
-              const { nativeEvent } = syntheticEvent;
-              console.log('WebView HTTP error:', nativeEvent.statusCode);
-              if (nativeEvent.statusCode >= 400) {
-                setVideoError(`Video unavailable (${nativeEvent.statusCode})`);
-              }
             }}
           />
         </View>
