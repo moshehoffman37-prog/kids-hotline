@@ -33,9 +33,10 @@ const AUTH_TOKEN_KEY = "@onetimeonetime_auth_token";
 
 type ContentPlayerRouteProp = RouteProp<RootStackParamList, "ContentPlayer">;
 
-function NativeVideoPlayer({ hlsUrl }: { hlsUrl: string }) {
+function NativeVideoPlayer({ hlsUrl, videoWidth }: { hlsUrl: string; videoWidth: number }) {
   const [error, setError] = useState<string | null>(null);
   const { theme } = useTheme();
+  const videoHeight = Math.floor(videoWidth * 9 / 16);
   
   const player = useVideoPlayer(hlsUrl, (p) => {
     p.loop = false;
@@ -53,7 +54,7 @@ function NativeVideoPlayer({ hlsUrl }: { hlsUrl: string }) {
 
   if (error) {
     return (
-      <View style={[videoPlayerStyles.container, videoPlayerStyles.errorContainer]}>
+      <View style={[videoPlayerStyles.container, videoPlayerStyles.errorContainer, { width: videoWidth, height: videoHeight }]}>
         <Feather name="alert-circle" size={32} color={theme.textSecondary} />
         <ThemedText style={{ color: theme.textSecondary, marginTop: 8 }}>
           {error}
@@ -63,7 +64,7 @@ function NativeVideoPlayer({ hlsUrl }: { hlsUrl: string }) {
   }
 
   return (
-    <View style={videoPlayerStyles.container}>
+    <View style={[videoPlayerStyles.container, { width: videoWidth, height: videoHeight }]}>
       <VideoView
         player={player}
         style={videoPlayerStyles.video}
@@ -78,8 +79,6 @@ function NativeVideoPlayer({ hlsUrl }: { hlsUrl: string }) {
 
 const videoPlayerStyles = StyleSheet.create({
   container: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_WIDTH * 9 / 16,
     backgroundColor: "#000000",
   },
   video: {
@@ -316,9 +315,11 @@ export default function ContentPlayerScreen() {
   };
 
   const renderVideoPlayer = () => {
+    const videoHeight = Math.floor(windowWidth * 9 / 16);
+    
     if (isLoading) {
       return (
-        <View style={[styles.videoContainer, { backgroundColor: theme.backgroundSecondary }]}>
+        <View style={[styles.videoContainer, { width: windowWidth, height: videoHeight, backgroundColor: theme.backgroundSecondary }]}>
           <ActivityIndicator size="large" color={theme.accent} />
           <ThemedText style={[styles.loadingText, { color: theme.textSecondary }]}>
             Loading video...
@@ -329,7 +330,7 @@ export default function ContentPlayerScreen() {
 
     if (videoError) {
       return (
-        <View style={[styles.errorContainer, { backgroundColor: theme.backgroundSecondary }]}>
+        <View style={[styles.errorContainer, { width: windowWidth, height: videoHeight, backgroundColor: theme.backgroundSecondary }]}>
           <Feather name="alert-circle" size={32} color={theme.textSecondary} />
           <ThemedText style={[styles.errorText, { color: theme.textSecondary }]}>
             {videoError}
@@ -342,11 +343,12 @@ export default function ContentPlayerScreen() {
     }
 
     if (vimeoVideoId) {
-      const vimeoPlayerUrl = `https://player.vimeo.com/video/${vimeoVideoId}?playsinline=1&autoplay=1&muted=0&title=0&byline=0&portrait=0&controls=1`;
+      const vimeoPlayerUrl = `https://player.vimeo.com/video/${vimeoVideoId}?playsinline=1&autoplay=1&muted=0&title=0&byline=0&portrait=0&controls=1&responsive=1`;
+      const videoHeight = Math.floor(windowWidth * 9 / 16);
       
       if (Platform.OS === "web") {
         return (
-          <View style={styles.videoContainer}>
+          <View style={[styles.videoContainer, { width: windowWidth, height: videoHeight }]}>
             <iframe
               src={vimeoPlayerUrl}
               style={{
@@ -361,23 +363,37 @@ export default function ContentPlayerScreen() {
         );
       }
       
-      // HTML injection method - works around react-native-webview Vimeo bug on iOS
+      // HTML with Vimeo Player SDK for better iOS compatibility
       const vimeoHtml = `<!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<style>*{margin:0;padding:0}html,body{width:100%;height:100%;background:#000;overflow:hidden}iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:none}</style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;background:#000;overflow:hidden}
+.container{position:relative;width:100%;height:0;padding-bottom:56.25%}
+iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:0}
+</style>
 </head>
 <body>
-<iframe src="${vimeoPlayerUrl}" frameborder="0" allow="autoplay;fullscreen;picture-in-picture" allowfullscreen webkitallowfullscreen></iframe>
+<div class="container">
+<iframe id="vimeo-player" src="${vimeoPlayerUrl}" frameborder="0" allow="autoplay;fullscreen;picture-in-picture;encrypted-media" allowfullscreen webkitallowfullscreen playsinline></iframe>
+</div>
+<script src="https://player.vimeo.com/api/player.js"></script>
+<script>
+var iframe=document.getElementById('vimeo-player');
+var player=new Vimeo.Player(iframe);
+player.ready().then(function(){player.play();}).catch(function(e){console.log('Player error:',e);});
+</script>
 </body>
 </html>`;
 
       return (
-        <View style={styles.videoContainer}>
+        <View style={[styles.videoContainer, { width: windowWidth, height: videoHeight }]}>
           <WebView
             source={{ html: vimeoHtml, baseUrl: 'https://player.vimeo.com' }}
-            style={styles.webview}
+            style={{ width: windowWidth, height: videoHeight }}
             allowsFullscreenVideo
             allowsInlineMediaPlayback={true}
             mediaPlaybackRequiresUserAction={false}
@@ -385,9 +401,11 @@ export default function ContentPlayerScreen() {
             scrollEnabled={false}
             bounces={false}
             originWhitelist={['*']}
+            mixedContentMode="always"
+            domStorageEnabled={true}
             startInLoadingState
             renderLoading={() => (
-              <View style={styles.loadingOverlay}>
+              <View style={[styles.loadingOverlay, { width: windowWidth, height: videoHeight }]}>
                 <ActivityIndicator size="large" color={theme.accent} />
               </View>
             )}
@@ -402,13 +420,13 @@ export default function ContentPlayerScreen() {
     }
 
     if (videoHlsUrl) {
-      return <NativeVideoPlayer hlsUrl={videoHlsUrl} />;
+      return <NativeVideoPlayer hlsUrl={videoHlsUrl} videoWidth={windowWidth} />;
     }
 
     if (videoEmbedUrl) {
       if (Platform.OS === "web") {
         return (
-          <View style={styles.videoContainer}>
+          <View style={[styles.videoContainer, { width: windowWidth, height: videoHeight }]}>
             <iframe
               src={videoEmbedUrl}
               style={{
@@ -425,7 +443,7 @@ export default function ContentPlayerScreen() {
     }
 
     return (
-      <View style={[styles.errorContainer, { backgroundColor: theme.backgroundSecondary }]}>
+      <View style={[styles.errorContainer, { width: windowWidth, height: videoHeight, backgroundColor: theme.backgroundSecondary }]}>
         <Feather name="alert-circle" size={32} color={theme.textSecondary} />
         <ThemedText style={[styles.errorText, { color: theme.textSecondary }]}>
           Video not available
