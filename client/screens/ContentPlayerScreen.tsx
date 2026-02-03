@@ -154,8 +154,17 @@ export default function ContentPlayerScreen() {
       
       api.getStreamUrl(item.id)
         .then((response) => {
-          if (item.type === "audio" && response.cdnUrl) {
-            setAudioStreamUrl(response.cdnUrl);
+          console.log('[Stream] API response:', JSON.stringify(response));
+          
+          // Handle audio - check multiple possible URL fields
+          if (item.type === "audio") {
+            const audioUrl = response.cdnUrl || response.streamUrl || response.url;
+            if (audioUrl) {
+              setAudioStreamUrl(audioUrl);
+            } else {
+              // Fallback to direct API stream endpoint
+              setAudioStreamUrl(`https://onetimeonetime.com/api/audio-files/${item.id}/stream`);
+            }
           } else if (item.type === "video" && response.vimeo && response.vimeoVideoId) {
             setVimeoVideoId(response.vimeoVideoId);
           } else if (item.type === "video" && response.embedUrl) {
@@ -201,11 +210,15 @@ export default function ContentPlayerScreen() {
 
   // Auto-play audio when stream URL is available
   useEffect(() => {
-    if (item.type === "audio" && audioStreamUrl && !sound) {
+    if (item.type === "audio" && audioStreamUrl && !sound && authToken) {
       const loadAndPlayAudio = async () => {
         try {
+          console.log('[Audio] Loading stream:', audioStreamUrl);
           const { sound: newSound } = await Audio.Sound.createAsync(
-            { uri: audioStreamUrl },
+            { 
+              uri: audioStreamUrl,
+              headers: { Authorization: `Bearer ${authToken}` }
+            },
             { shouldPlay: true, rate: playbackRate, shouldCorrectPitch: true },
             onAudioStatusUpdate
           );
@@ -217,7 +230,7 @@ export default function ContentPlayerScreen() {
       };
       loadAndPlayAudio();
     }
-  }, [audioStreamUrl, item.type]);
+  }, [audioStreamUrl, item.type, authToken]);
 
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -238,7 +251,10 @@ export default function ContentPlayerScreen() {
     if (!sound) {
       try {
         const { sound: newSound } = await Audio.Sound.createAsync(
-          { uri: audioStreamUrl },
+          { 
+            uri: audioStreamUrl,
+            headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined
+          },
           { shouldPlay: true, rate: playbackRate, shouldCorrectPitch: true },
           onAudioStatusUpdate
         );

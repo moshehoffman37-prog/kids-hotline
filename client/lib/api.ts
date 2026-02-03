@@ -49,8 +49,11 @@ export interface StreamResponse {
   bunny?: boolean;
   bunnyStorage?: boolean;
   vimeo?: boolean;
+  replit?: boolean;
   embedUrl?: string;
   cdnUrl?: string;
+  streamUrl?: string;
+  url?: string;
   hlsUrl?: string;
   vimeoVideoId?: string;
   mediaType?: "video" | "audio";
