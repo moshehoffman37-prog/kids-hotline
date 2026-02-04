@@ -152,20 +152,34 @@ export default function ContentPlayerScreen() {
         console.log("Failed to mark as viewed:", error);
       });
       
-      // Audio files: Use direct stream URL (endpoint streams raw audio)
-      if (item.type === "audio") {
-        const audioUrl = `https://onetimeonetime.com/api/audio/${item.id}/stream`;
-        console.log('[Audio] Using direct stream URL:', audioUrl);
-        setAudioStreamUrl(audioUrl);
-        setIsLoading(false);
-        return;
-      }
-      
-      // Videos: Get stream info from API
-      api.getStreamUrl(item.id, item.type)
+      // Get stream info from API for both audio and video
+      api.getStreamUrl(item.id, "video")
         .then((response) => {
           console.log('[Stream] API response:', JSON.stringify(response));
           
+          // Handle audio files
+          if (item.type === "audio") {
+            let audioUrl = response.streamUrl || response.cdnUrl || response.url;
+            console.log('[Audio] Raw stream URL from API:', audioUrl);
+            
+            if (audioUrl) {
+              // Convert relative URLs to absolute URLs
+              if (audioUrl.startsWith('/')) {
+                audioUrl = `https://onetimeonetime.com${audioUrl}`;
+              }
+              console.log('[Audio] Absolute stream URL:', audioUrl);
+              setAudioStreamUrl(audioUrl);
+            } else {
+              // Fallback: try /api/videos/{id}/stream endpoint directly
+              const fallbackUrl = `https://onetimeonetime.com/api/videos/${item.id}/stream`;
+              console.log('[Audio] No streamUrl in response, using videos endpoint:', fallbackUrl);
+              setAudioStreamUrl(fallbackUrl);
+            }
+            setIsLoading(false);
+            return;
+          }
+          
+          // Handle video files
           if (response.vimeo && response.vimeoVideoId) {
             setVimeoVideoId(response.vimeoVideoId);
           } else if (response.embedUrl) {
@@ -216,10 +230,29 @@ export default function ContentPlayerScreen() {
         try {
           console.log('[Audio] Loading stream URL:', audioStreamUrl);
           console.log('[Audio] Auth token present:', !!authToken);
+          console.log('[Audio] Platform:', Platform.OS);
+          
+          let audioUri = audioStreamUrl;
+          
+          // For web: Fetch audio as blob since HTML5 Audio doesn't support auth headers
+          if (Platform.OS === 'web') {
+            console.log('[Audio] Web platform - fetching as blob');
+            const response = await fetch(audioStreamUrl, {
+              headers: { Authorization: `Bearer ${authToken}` }
+            });
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            const blob = await response.blob();
+            audioUri = URL.createObjectURL(blob);
+            console.log('[Audio] Blob URL created:', audioUri.substring(0, 50) + '...');
+          }
+          
           const { sound: newSound } = await Audio.Sound.createAsync(
             { 
-              uri: audioStreamUrl,
-              headers: { Authorization: `Bearer ${authToken}` }
+              uri: audioUri,
+              headers: Platform.OS !== 'web' ? { Authorization: `Bearer ${authToken}` } : undefined,
+              overrideFileExtensionAndroid: 'mp3',
             },
             { shouldPlay: true, rate: playbackRate, shouldCorrectPitch: true },
             onAudioStatusUpdate
@@ -254,10 +287,25 @@ export default function ContentPlayerScreen() {
     
     if (!sound) {
       try {
+        let audioUri = audioStreamUrl;
+        
+        // For web: Fetch audio as blob since HTML5 Audio doesn't support auth headers
+        if (Platform.OS === 'web' && authToken) {
+          const response = await fetch(audioStreamUrl, {
+            headers: { Authorization: `Bearer ${authToken}` }
+          });
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+          const blob = await response.blob();
+          audioUri = URL.createObjectURL(blob);
+        }
+          
         const { sound: newSound } = await Audio.Sound.createAsync(
           { 
-            uri: audioStreamUrl,
-            headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined
+            uri: audioUri,
+            headers: Platform.OS !== 'web' && authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
+            overrideFileExtensionAndroid: 'mp3',
           },
           { shouldPlay: true, rate: playbackRate, shouldCorrectPitch: true },
           onAudioStatusUpdate
