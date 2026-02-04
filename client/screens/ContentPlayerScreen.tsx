@@ -152,26 +152,23 @@ export default function ContentPlayerScreen() {
         console.log("Failed to mark as viewed:", error);
       });
       
+      // Audio files: Use direct stream URL (endpoint streams raw audio)
+      if (item.type === "audio") {
+        const audioUrl = `https://onetimeonetime.com/api/audio/${item.id}/stream`;
+        console.log('[Audio] Using direct stream URL:', audioUrl);
+        setAudioStreamUrl(audioUrl);
+        setIsLoading(false);
+        return;
+      }
+      
+      // Videos: Get stream info from API
       api.getStreamUrl(item.id, item.type)
         .then((response) => {
           console.log('[Stream] API response:', JSON.stringify(response));
           
-          // Handle audio - prefer streamUrl, then cdnUrl, then fallback to API endpoint
-          if (item.type === "audio") {
-            let audioUrl = response.streamUrl || response.cdnUrl || response.url;
-            if (audioUrl) {
-              // Convert relative URLs to absolute URLs
-              if (audioUrl.startsWith('/')) {
-                audioUrl = `https://onetimeonetime.com${audioUrl}`;
-              }
-              setAudioStreamUrl(audioUrl);
-            } else {
-              // Fallback to direct API stream endpoint for Replit Object Storage
-              setAudioStreamUrl(`https://onetimeonetime.com/api/audio/${item.id}/stream`);
-            }
-          } else if (item.type === "video" && response.vimeo && response.vimeoVideoId) {
+          if (response.vimeo && response.vimeoVideoId) {
             setVimeoVideoId(response.vimeoVideoId);
-          } else if (item.type === "video" && response.embedUrl) {
+          } else if (response.embedUrl) {
             const accentColor = theme.accent.replace("#", "");
             const separator = response.embedUrl.includes("?") ? "&" : "?";
             const themedUrl = `${response.embedUrl}${separator}primaryColor=${accentColor}`;
@@ -181,7 +178,7 @@ export default function ContentPlayerScreen() {
             if (hlsUrl) {
               setVideoHlsUrl(hlsUrl);
             }
-          } else if (item.type === "video") {
+          } else {
             setVideoError("Video stream not available");
           }
           setIsLoading(false);
