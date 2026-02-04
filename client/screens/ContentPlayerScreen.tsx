@@ -156,14 +156,14 @@ export default function ContentPlayerScreen() {
         .then((response) => {
           console.log('[Stream] API response:', JSON.stringify(response));
           
-          // Handle audio - check multiple possible URL fields
+          // Handle audio - prefer streamUrl, then cdnUrl, then fallback to API endpoint
           if (item.type === "audio") {
-            const audioUrl = response.cdnUrl || response.streamUrl || response.url;
+            const audioUrl = response.streamUrl || response.cdnUrl || response.url;
             if (audioUrl) {
               setAudioStreamUrl(audioUrl);
             } else {
-              // Fallback to direct API stream endpoint
-              setAudioStreamUrl(`https://onetimeonetime.com/api/audio-files/${item.id}/stream`);
+              // Fallback to direct API stream endpoint for Replit Object Storage
+              setAudioStreamUrl(`https://onetimeonetime.com/api/audio/${item.id}/stream`);
             }
           } else if (item.type === "video" && response.vimeo && response.vimeoVideoId) {
             setVimeoVideoId(response.vimeoVideoId);
