@@ -152,7 +152,7 @@ export default function ContentPlayerScreen() {
         console.log("Failed to mark as viewed:", error);
       });
       
-      api.getStreamUrl(item.id)
+      api.getStreamUrl(item.id, item.type)
         .then((response) => {
           console.log('[Stream] API response:', JSON.stringify(response));
           

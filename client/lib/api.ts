@@ -317,7 +317,11 @@ export function getVideoThumbnailUrl(video: VideoItem): { url: string | null; re
   return { url: null, requiresAuth: false };
 }
 
-export async function getStreamUrl(itemId: string): Promise<StreamResponse> {
+export async function getStreamUrl(itemId: string, itemType?: string): Promise<StreamResponse> {
+  // Use different endpoint based on content type
+  if (itemType === "audio") {
+    return makeRequest<StreamResponse>(`/api/audio/${itemId}/stream`);
+  }
   return makeRequest<StreamResponse>(`/api/videos/${itemId}/stream`);
 }
 
