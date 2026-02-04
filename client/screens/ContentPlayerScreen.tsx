@@ -158,8 +158,12 @@ export default function ContentPlayerScreen() {
           
           // Handle audio - prefer streamUrl, then cdnUrl, then fallback to API endpoint
           if (item.type === "audio") {
-            const audioUrl = response.streamUrl || response.cdnUrl || response.url;
+            let audioUrl = response.streamUrl || response.cdnUrl || response.url;
             if (audioUrl) {
+              // Convert relative URLs to absolute URLs
+              if (audioUrl.startsWith('/')) {
+                audioUrl = `https://onetimeonetime.com${audioUrl}`;
+              }
               setAudioStreamUrl(audioUrl);
             } else {
               // Fallback to direct API stream endpoint for Replit Object Storage
