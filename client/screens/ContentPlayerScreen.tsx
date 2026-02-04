@@ -217,7 +217,8 @@ export default function ContentPlayerScreen() {
     if (item.type === "audio" && audioStreamUrl && !sound && authToken) {
       const loadAndPlayAudio = async () => {
         try {
-          console.log('[Audio] Loading stream:', audioStreamUrl);
+          console.log('[Audio] Loading stream URL:', audioStreamUrl);
+          console.log('[Audio] Auth token present:', !!authToken);
           const { sound: newSound } = await Audio.Sound.createAsync(
             { 
               uri: audioStreamUrl,
@@ -226,10 +227,12 @@ export default function ContentPlayerScreen() {
             { shouldPlay: true, rate: playbackRate, shouldCorrectPitch: true },
             onAudioStatusUpdate
           );
+          console.log('[Audio] Sound created successfully');
           setSound(newSound);
           setIsPlaying(true);
-        } catch (error) {
-          console.error("Error auto-loading audio:", error);
+        } catch (error: any) {
+          console.error("[Audio] Error loading:", error?.message || error?.toString() || JSON.stringify(error));
+          console.error("[Audio] Full error object:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
         }
       };
       loadAndPlayAudio();
