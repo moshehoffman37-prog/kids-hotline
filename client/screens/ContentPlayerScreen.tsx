@@ -14,7 +14,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Image } from "expo-image";
-import { Audio, AVPlaybackStatus } from "expo-av";
+import { Audio, AVPlaybackStatus, Video } from "expo-av";
 import { WebView } from "react-native-webview";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { Feather } from "@expo/vector-icons";
@@ -36,16 +36,16 @@ type ContentPlayerRouteProp = RouteProp<RootStackParamList, "ContentPlayer">;
 function NativeVideoPlayer({ hlsUrl }: { hlsUrl: string }) {
   const [error, setError] = useState<string | null>(null);
   const { theme } = useTheme();
-  
+
   const player = useVideoPlayer(hlsUrl, (p) => {
     p.loop = false;
     p.play();
   });
 
   useEffect(() => {
-    const subscription = player.addListener('statusChange', (status) => {
-      if (status.status === 'error') {
-        setError(status.error?.message || 'Video playback failed');
+    const subscription = player.addListener("statusChange", (status) => {
+      if (status.status === "error") {
+        setError(status.error?.message || "Video playback failed");
       }
     });
     return () => subscription.remove();
@@ -53,7 +53,9 @@ function NativeVideoPlayer({ hlsUrl }: { hlsUrl: string }) {
 
   if (error) {
     return (
-      <View style={[videoPlayerStyles.container, videoPlayerStyles.errorContainer]}>
+      <View
+        style={[videoPlayerStyles.container, videoPlayerStyles.errorContainer]}
+      >
         <Feather name="alert-circle" size={32} color={theme.textSecondary} />
         <ThemedText style={{ color: theme.textSecondary, marginTop: 8 }}>
           {error}
@@ -79,7 +81,7 @@ function NativeVideoPlayer({ hlsUrl }: { hlsUrl: string }) {
 const videoPlayerStyles = StyleSheet.create({
   container: {
     width: SCREEN_WIDTH,
-    height: SCREEN_WIDTH * 9 / 16,
+    height: (SCREEN_WIDTH * 9) / 16,
     backgroundColor: "#000000",
   },
   video: {
@@ -147,38 +149,43 @@ export default function ContentPlayerScreen() {
       setVideoError(null);
       setVimeoVideoId(null);
       setVideoHlsUrl(null);
-      
+
       api.markVideoViewed(item.id).catch((error) => {
         console.log("Failed to mark as viewed:", error);
       });
-      
+
       // Get stream info from API for both audio and video
-      api.getStreamUrl(item.id, "video")
+      api
+        .getStreamUrl(item.id, "video")
         .then((response) => {
-          console.log('[Stream] API response:', JSON.stringify(response));
-          
+          console.log("[Stream] API response:", JSON.stringify(response));
+
           // Handle audio files
           if (item.type === "audio") {
-            let audioUrl = response.streamUrl || response.cdnUrl || response.url;
-            console.log('[Audio] Raw stream URL from API:', audioUrl);
-            
+            let audioUrl =
+              response.streamUrl || response.cdnUrl || response.url;
+            console.log("[Audio] Raw stream URL from API:", audioUrl);
+
             if (audioUrl) {
               // Convert relative URLs to absolute URLs
-              if (audioUrl.startsWith('/')) {
+              if (audioUrl.startsWith("/")) {
                 audioUrl = `https://onetimeonetime.com${audioUrl}`;
               }
-              console.log('[Audio] Absolute stream URL:', audioUrl);
+              console.log("[Audio] Absolute stream URL:", audioUrl);
               setAudioStreamUrl(audioUrl);
             } else {
               // Fallback: try /api/videos/{id}/stream endpoint directly
               const fallbackUrl = `https://onetimeonetime.com/api/videos/${item.id}/stream`;
-              console.log('[Audio] No streamUrl in response, using videos endpoint:', fallbackUrl);
+              console.log(
+                "[Audio] No streamUrl in response, using videos endpoint:",
+                fallbackUrl,
+              );
               setAudioStreamUrl(fallbackUrl);
             }
             setIsLoading(false);
             return;
           }
-          
+
           // Handle video files
           if (response.vimeo && response.vimeoVideoId) {
             setVimeoVideoId(response.vimeoVideoId);
@@ -187,7 +194,7 @@ export default function ContentPlayerScreen() {
             const separator = response.embedUrl.includes("?") ? "&" : "?";
             const themedUrl = `${response.embedUrl}${separator}primaryColor=${accentColor}`;
             setVideoEmbedUrl(themedUrl);
-            
+
             const hlsUrl = api.extractHlsUrl(response.embedUrl);
             if (hlsUrl) {
               setVideoHlsUrl(hlsUrl);
@@ -228,41 +235,55 @@ export default function ContentPlayerScreen() {
     if (item.type === "audio" && audioStreamUrl && !sound && authToken) {
       const loadAndPlayAudio = async () => {
         try {
-          console.log('[Audio] Loading stream URL:', audioStreamUrl);
-          console.log('[Audio] Auth token present:', !!authToken);
-          console.log('[Audio] Platform:', Platform.OS);
-          
+          console.log("[Audio] Loading stream URL:", audioStreamUrl);
+          console.log("[Audio] Auth token present:", !!authToken);
+          console.log("[Audio] Platform:", Platform.OS);
+
           let audioUri = audioStreamUrl;
-          
+
           // For web: Fetch audio as blob since HTML5 Audio doesn't support auth headers
-          if (Platform.OS === 'web') {
-            console.log('[Audio] Web platform - fetching as blob');
+          if (Platform.OS === "web") {
+            console.log("[Audio] Web platform - fetching as blob");
             const response = await fetch(audioStreamUrl, {
-              headers: { Authorization: `Bearer ${authToken}` }
+              headers: { Authorization: `Bearer ${authToken}` },
             });
             if (!response.ok) {
-              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+              throw new Error(
+                `HTTP ${response.status}: ${response.statusText}`,
+              );
             }
             const blob = await response.blob();
             audioUri = URL.createObjectURL(blob);
-            console.log('[Audio] Blob URL created:', audioUri.substring(0, 50) + '...');
+            console.log(
+              "[Audio] Blob URL created:",
+              audioUri.substring(0, 50) + "...",
+            );
           }
-          
+
           const { sound: newSound } = await Audio.Sound.createAsync(
-            { 
+            {
               uri: audioUri,
-              headers: Platform.OS !== 'web' ? { Authorization: `Bearer ${authToken}` } : undefined,
-              overrideFileExtensionAndroid: 'mp3',
+              headers:
+                Platform.OS !== "web"
+                  ? { Authorization: `Bearer ${authToken}` }
+                  : undefined,
+              overrideFileExtensionAndroid: "mp3",
             },
             { shouldPlay: true, rate: playbackRate, shouldCorrectPitch: true },
-            onAudioStatusUpdate
+            onAudioStatusUpdate,
           );
-          console.log('[Audio] Sound created successfully');
+          console.log("[Audio] Sound created successfully");
           setSound(newSound);
           setIsPlaying(true);
         } catch (error: any) {
-          console.error("[Audio] Error loading:", error?.message || error?.toString() || JSON.stringify(error));
-          console.error("[Audio] Full error object:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
+          console.error(
+            "[Audio] Error loading:",
+            error?.message || error?.toString() || JSON.stringify(error),
+          );
+          console.error(
+            "[Audio] Full error object:",
+            JSON.stringify(error, Object.getOwnPropertyNames(error)),
+          );
         }
       };
       loadAndPlayAudio();
@@ -279,20 +300,20 @@ export default function ContentPlayerScreen() {
 
   const handleAudioPlayPause = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    
+
     if (!audioStreamUrl) {
       console.error("No audio stream URL available");
       return;
     }
-    
+
     if (!sound) {
       try {
         let audioUri = audioStreamUrl;
-        
+
         // For web: Fetch audio as blob since HTML5 Audio doesn't support auth headers
-        if (Platform.OS === 'web' && authToken) {
+        if (Platform.OS === "web" && authToken) {
           const response = await fetch(audioStreamUrl, {
-            headers: { Authorization: `Bearer ${authToken}` }
+            headers: { Authorization: `Bearer ${authToken}` },
           });
           if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -300,15 +321,18 @@ export default function ContentPlayerScreen() {
           const blob = await response.blob();
           audioUri = URL.createObjectURL(blob);
         }
-          
+
         const { sound: newSound } = await Audio.Sound.createAsync(
-          { 
+          {
             uri: audioUri,
-            headers: Platform.OS !== 'web' && authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
-            overrideFileExtensionAndroid: 'mp3',
+            headers:
+              Platform.OS !== "web" && authToken
+                ? { Authorization: `Bearer ${authToken}` }
+                : undefined,
+            overrideFileExtensionAndroid: "mp3",
           },
           { shouldPlay: true, rate: playbackRate, shouldCorrectPitch: true },
-          onAudioStatusUpdate
+          onAudioStatusUpdate,
         );
         setSound(newSound);
         setIsPlaying(true);
@@ -347,26 +371,26 @@ export default function ContentPlayerScreen() {
 
   const handleSeek = async (event: GestureResponderEvent) => {
     if (!sound || audioDuration <= 0) return;
-    
+
     const width = progressBarWidth;
     if (width <= 0) return;
-    
+
     const nativeEvent = event.nativeEvent as any;
     let locationX = nativeEvent.locationX;
-    
-    if (typeof locationX !== 'number' || isNaN(locationX)) {
+
+    if (typeof locationX !== "number" || isNaN(locationX)) {
       if (nativeEvent.offsetX !== undefined) {
         locationX = nativeEvent.offsetX;
       } else {
         return;
       }
     }
-    
+
     const percentage = Math.max(0, Math.min(1, locationX / width));
     const newPosition = Math.round(percentage * audioDuration);
-    
+
     if (isNaN(newPosition) || !isFinite(newPosition) || newPosition < 0) return;
-    
+
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
       await sound.setPositionAsync(newPosition);
@@ -386,9 +410,16 @@ export default function ContentPlayerScreen() {
   const renderVideoPlayer = () => {
     if (isLoading) {
       return (
-        <View style={[styles.videoContainer, { backgroundColor: theme.backgroundSecondary }]}>
+        <View
+          style={[
+            styles.videoContainer,
+            { backgroundColor: theme.backgroundSecondary },
+          ]}
+        >
           <ActivityIndicator size="large" color={theme.accent} />
-          <ThemedText style={[styles.loadingText, { color: theme.textSecondary }]}>
+          <ThemedText
+            style={[styles.loadingText, { color: theme.textSecondary }]}
+          >
             Loading video...
           </ThemedText>
         </View>
@@ -397,12 +428,21 @@ export default function ContentPlayerScreen() {
 
     if (videoError) {
       return (
-        <View style={[styles.errorContainer, { backgroundColor: theme.backgroundSecondary }]}>
+        <View
+          style={[
+            styles.errorContainer,
+            { backgroundColor: theme.backgroundSecondary },
+          ]}
+        >
           <Feather name="alert-circle" size={32} color={theme.textSecondary} />
-          <ThemedText style={[styles.errorText, { color: theme.textSecondary }]}>
+          <ThemedText
+            style={[styles.errorText, { color: theme.textSecondary }]}
+          >
             {videoError}
           </ThemedText>
-          <ThemedText style={[styles.errorSubtext, { color: theme.textSecondary }]}>
+          <ThemedText
+            style={[styles.errorSubtext, { color: theme.textSecondary }]}
+          >
             Please check back later
           </ThemedText>
         </View>
@@ -411,7 +451,7 @@ export default function ContentPlayerScreen() {
 
     if (vimeoVideoId) {
       const vimeoPlayerUrl = `https://player.vimeo.com/video/${vimeoVideoId}?playsinline=1&autoplay=1&muted=0&title=0&byline=0&portrait=0&controls=1`;
-      
+
       if (Platform.OS === "web") {
         return (
           <View style={styles.videoContainer}>
@@ -428,7 +468,7 @@ export default function ContentPlayerScreen() {
           </View>
         );
       }
-      
+
       // HTML injection method - works around react-native-webview Vimeo bug on iOS
       const vimeoHtml = `<!DOCTYPE html>
 <html>
@@ -444,7 +484,7 @@ export default function ContentPlayerScreen() {
       return (
         <View style={styles.videoContainer}>
           <WebView
-            source={{ html: vimeoHtml, baseUrl: 'https://player.vimeo.com' }}
+            source={{ html: vimeoHtml, baseUrl: "https://player.vimeo.com" }}
             style={styles.webview}
             allowsFullscreenVideo
             allowsInlineMediaPlayback={true}
@@ -452,7 +492,7 @@ export default function ContentPlayerScreen() {
             javaScriptEnabled={true}
             scrollEnabled={false}
             bounces={false}
-            originWhitelist={['*']}
+            originWhitelist={["*"]}
             startInLoadingState
             renderLoading={() => (
               <View style={styles.loadingOverlay}>
@@ -461,8 +501,8 @@ export default function ContentPlayerScreen() {
             )}
             onError={(syntheticEvent) => {
               const { nativeEvent } = syntheticEvent;
-              console.log('WebView error:', nativeEvent);
-              setVideoError('Could not load video player');
+              console.log("WebView error:", nativeEvent);
+              setVideoError("Could not load video player");
             }}
           />
         </View>
@@ -474,26 +514,26 @@ export default function ContentPlayerScreen() {
     }
 
     if (videoEmbedUrl) {
-      if (Platform.OS === "web") {
-        return (
-          <View style={styles.videoContainer}>
-            <iframe
-              src={videoEmbedUrl}
-              style={{
-                width: "100%",
-                height: "100%",
-                border: "none",
-              }}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-              allowFullScreen
-            />
-          </View>
-        );
-      }
+      return (
+        <View style={{ height: 250 }}>
+          <WebView
+            source={{ uri: videoEmbedUrl }}
+            javaScriptEnabled
+            domStorageEnabled
+            allowsFullscreenVideo
+            mediaPlaybackRequiresUserAction={false}
+          />
+        </View>
+      );
     }
 
     return (
-      <View style={[styles.errorContainer, { backgroundColor: theme.backgroundSecondary }]}>
+      <View
+        style={[
+          styles.errorContainer,
+          { backgroundColor: theme.backgroundSecondary },
+        ]}
+      >
         <Feather name="alert-circle" size={32} color={theme.textSecondary} />
         <ThemedText style={[styles.errorText, { color: theme.textSecondary }]}>
           Video not available
@@ -506,10 +546,17 @@ export default function ContentPlayerScreen() {
     if (isLoading) {
       return (
         <View style={styles.audioContainer}>
-          <View style={[styles.audioThumbnailPlaceholder, { backgroundColor: theme.backgroundSecondary }]}>
+          <View
+            style={[
+              styles.audioThumbnailPlaceholder,
+              { backgroundColor: theme.backgroundSecondary },
+            ]}
+          >
             <ActivityIndicator size="large" color={theme.accent} />
           </View>
-          <ThemedText style={[styles.loadingText, { color: theme.textSecondary }]}>
+          <ThemedText
+            style={[styles.loadingText, { color: theme.textSecondary }]}
+          >
             Loading audio...
           </ThemedText>
         </View>
@@ -518,12 +565,15 @@ export default function ContentPlayerScreen() {
 
     const hasThumbnail = item.thumbnailUrl;
     const needsAuth = item.thumbnailRequiresAuth && authToken;
-    const imageSource = hasThumbnail && item.thumbnailUrl
-      ? {
-          uri: item.thumbnailUrl,
-          headers: needsAuth ? { Authorization: `Bearer ${authToken}` } : undefined,
-        }
-      : null;
+    const imageSource =
+      hasThumbnail && item.thumbnailUrl
+        ? {
+            uri: item.thumbnailUrl,
+            headers: needsAuth
+              ? { Authorization: `Bearer ${authToken}` }
+              : undefined,
+          }
+        : null;
 
     return (
       <View style={styles.audioContainer}>
@@ -534,14 +584,25 @@ export default function ContentPlayerScreen() {
             contentFit="contain"
           />
         ) : (
-          <View style={[styles.audioThumbnailPlaceholder, { backgroundColor: theme.backgroundSecondary }]}>
+          <View
+            style={[
+              styles.audioThumbnailPlaceholder,
+              { backgroundColor: theme.backgroundSecondary },
+            ]}
+          >
             <Feather name="headphones" size={64} color={theme.accent} />
           </View>
         )}
         <View style={styles.audioControls}>
           <Pressable
             onPress={handleAudioPlayPause}
-            style={[styles.playButton, { backgroundColor: theme.accent, opacity: audioStreamUrl ? 1 : 0.5 }]}
+            style={[
+              styles.playButton,
+              {
+                backgroundColor: theme.accent,
+                opacity: audioStreamUrl ? 1 : 0.5,
+              },
+            ]}
             disabled={!audioStreamUrl}
           >
             <Feather
@@ -550,7 +611,7 @@ export default function ContentPlayerScreen() {
               color={theme.buttonText}
             />
           </Pressable>
-          <View 
+          <View
             style={styles.progressContainer}
             onLayout={(e) => setProgressBarWidth(e.nativeEvent.layout.width)}
           >
@@ -559,15 +620,21 @@ export default function ContentPlayerScreen() {
               onPress={handleSeek}
               style={[styles.progressBarTouchable]}
             >
-              <View style={[styles.progressBar, { backgroundColor: theme.backgroundSecondary }]}>
+              <View
+                style={[
+                  styles.progressBar,
+                  { backgroundColor: theme.backgroundSecondary },
+                ]}
+              >
                 <View
                   style={[
                     styles.progressFill,
                     {
                       backgroundColor: theme.accent,
-                      width: audioDuration > 0
-                        ? `${(audioPosition / audioDuration) * 100}%`
-                        : "0%",
+                      width:
+                        audioDuration > 0
+                          ? `${(audioPosition / audioDuration) * 100}%`
+                          : "0%",
                     },
                   ]}
                 />
@@ -576,25 +643,32 @@ export default function ContentPlayerScreen() {
                     styles.progressThumb,
                     {
                       backgroundColor: theme.accent,
-                      left: audioDuration > 0
-                        ? `${(audioPosition / audioDuration) * 100}%`
-                        : "0%",
+                      left:
+                        audioDuration > 0
+                          ? `${(audioPosition / audioDuration) * 100}%`
+                          : "0%",
                     },
                   ]}
                 />
               </View>
             </Pressable>
             <View style={styles.timeContainer}>
-              <ThemedText style={[styles.timeText, { color: theme.textSecondary }]}>
+              <ThemedText
+                style={[styles.timeText, { color: theme.textSecondary }]}
+              >
                 {formatTime(audioPosition)}
               </ThemedText>
-              <ThemedText style={[styles.timeText, { color: theme.textSecondary }]}>
+              <ThemedText
+                style={[styles.timeText, { color: theme.textSecondary }]}
+              >
                 {formatTime(audioDuration)}
               </ThemedText>
             </View>
           </View>
           <View style={styles.speedControls}>
-            <ThemedText style={[styles.speedLabel, { color: theme.textSecondary }]}>
+            <ThemedText
+              style={[styles.speedLabel, { color: theme.textSecondary }]}
+            >
               Speed
             </ThemedText>
             <View style={styles.speedButtons}>
@@ -605,15 +679,24 @@ export default function ContentPlayerScreen() {
                   style={[
                     styles.speedButton,
                     {
-                      backgroundColor: playbackRate === speed ? theme.accent : theme.backgroundSecondary,
-                      borderColor: playbackRate === speed ? theme.accent : theme.border,
+                      backgroundColor:
+                        playbackRate === speed
+                          ? theme.accent
+                          : theme.backgroundSecondary,
+                      borderColor:
+                        playbackRate === speed ? theme.accent : theme.border,
                     },
                   ]}
                 >
                   <ThemedText
                     style={[
                       styles.speedButtonText,
-                      { color: playbackRate === speed ? theme.buttonText : theme.text },
+                      {
+                        color:
+                          playbackRate === speed
+                            ? theme.buttonText
+                            : theme.text,
+                      },
                     ]}
                   >
                     {speed}x
@@ -643,14 +726,25 @@ export default function ContentPlayerScreen() {
       );
     }
 
-    const renderDocumentPage = ({ item: pageUrl, index }: { item: string; index: number }) => (
-      <Pressable 
-        style={[styles.documentPageFullscreen, { width: windowWidth, height: windowHeight }]}
+    const renderDocumentPage = ({
+      item: pageUrl,
+      index,
+    }: {
+      item: string;
+      index: number;
+    }) => (
+      <Pressable
+        style={[
+          styles.documentPageFullscreen,
+          { width: windowWidth, height: windowHeight },
+        ]}
         onPress={toggleDocumentControls}
       >
         <ZoomableImage
           uri={pageUrl}
-          headers={authToken ? { Authorization: `Bearer ${authToken}` } : undefined}
+          headers={
+            authToken ? { Authorization: `Bearer ${authToken}` } : undefined
+          }
           style={{ width: windowWidth, height: windowHeight }}
           resetKey={currentPageIndex}
         />
@@ -669,8 +763,14 @@ export default function ContentPlayerScreen() {
           pagingEnabled
           showsHorizontalScrollIndicator={false}
           onScroll={(e) => {
-            const index = Math.round(e.nativeEvent.contentOffset.x / windowWidth);
-            if (index !== currentPageIndex && index >= 0 && index < documentPages.length) {
+            const index = Math.round(
+              e.nativeEvent.contentOffset.x / windowWidth,
+            );
+            if (
+              index !== currentPageIndex &&
+              index >= 0 &&
+              index < documentPages.length
+            ) {
               setCurrentPageIndex(index);
             }
           }}
@@ -681,10 +781,15 @@ export default function ContentPlayerScreen() {
             index,
           })}
         />
-        
+
         {showDocumentControls ? (
           <>
-            <View style={[styles.documentHeader, { paddingTop: insets.top + Spacing.sm }]}>
+            <View
+              style={[
+                styles.documentHeader,
+                { paddingTop: insets.top + Spacing.sm },
+              ]}
+            >
               <Pressable
                 onPress={handleBack}
                 style={styles.documentBackButton}
@@ -697,34 +802,53 @@ export default function ContentPlayerScreen() {
               </ThemedText>
               <View style={{ width: 40 }} />
             </View>
-            
+
             {currentPageIndex > 0 ? (
               <Pressable
-                style={[styles.pageNavButton, styles.prevButton, { top: windowHeight / 2 - 24 }]}
+                style={[
+                  styles.pageNavButton,
+                  styles.prevButton,
+                  { top: windowHeight / 2 - 24 },
+                ]}
                 onPress={() => {
                   const newIndex = currentPageIndex - 1;
                   setCurrentPageIndex(newIndex);
-                  documentListRef.current?.scrollToIndex({ index: newIndex, animated: true });
+                  documentListRef.current?.scrollToIndex({
+                    index: newIndex,
+                    animated: true,
+                  });
                 }}
               >
                 <Feather name="chevron-left" size={32} color="#fff" />
               </Pressable>
             ) : null}
-            
+
             {currentPageIndex < documentPages.length - 1 ? (
               <Pressable
-                style={[styles.pageNavButton, styles.nextButton, { top: windowHeight / 2 - 24 }]}
+                style={[
+                  styles.pageNavButton,
+                  styles.nextButton,
+                  { top: windowHeight / 2 - 24 },
+                ]}
                 onPress={() => {
                   const newIndex = currentPageIndex + 1;
                   setCurrentPageIndex(newIndex);
-                  documentListRef.current?.scrollToIndex({ index: newIndex, animated: true });
+                  documentListRef.current?.scrollToIndex({
+                    index: newIndex,
+                    animated: true,
+                  });
                 }}
               >
                 <Feather name="chevron-right" size={32} color="#fff" />
               </Pressable>
             ) : null}
-            
-            <View style={[styles.documentFooter, { paddingBottom: insets.bottom + Spacing.sm }]}>
+
+            <View
+              style={[
+                styles.documentFooter,
+                { paddingBottom: insets.bottom + Spacing.sm },
+              ]}
+            >
               <ThemedText style={styles.pageCounter}>
                 {currentPageIndex + 1} / {documentPages.length}
               </ThemedText>
@@ -772,7 +896,10 @@ export default function ContentPlayerScreen() {
         <View style={styles.headerRight} />
       </View>
 
-      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={styles.contentContainer}
+      >
         {item.type === "video" ? renderVideoPlayer() : null}
         {item.type === "audio" ? renderAudioPlayer() : null}
 
@@ -781,25 +908,38 @@ export default function ContentPlayerScreen() {
             {item.title}
           </ThemedText>
           {item.description ? (
-            <ThemedText style={[styles.description, { color: theme.textSecondary }]}>
+            <ThemedText
+              style={[styles.description, { color: theme.textSecondary }]}
+            >
               {item.description}
             </ThemedText>
           ) : null}
           <View style={styles.metaRow}>
             {item.category ? (
-              <View style={[styles.categoryBadge, { backgroundColor: `${theme.accent}20` }]}>
-                <ThemedText style={[styles.categoryBadgeText, { color: theme.accent }]}>
+              <View
+                style={[
+                  styles.categoryBadge,
+                  { backgroundColor: `${theme.accent}20` },
+                ]}
+              >
+                <ThemedText
+                  style={[styles.categoryBadgeText, { color: theme.accent }]}
+                >
                   {item.category}
                 </ThemedText>
               </View>
             ) : null}
             {item.duration ? (
-              <ThemedText style={[styles.duration, { color: theme.textSecondary }]}>
+              <ThemedText
+                style={[styles.duration, { color: theme.textSecondary }]}
+              >
                 {formatTime(item.duration * 1000)}
               </ThemedText>
             ) : null}
             {item.pageCount ? (
-              <ThemedText style={[styles.duration, { color: theme.textSecondary }]}>
+              <ThemedText
+                style={[styles.duration, { color: theme.textSecondary }]}
+              >
                 {item.pageCount} pages
               </ThemedText>
             ) : null}
@@ -844,7 +984,7 @@ const styles = StyleSheet.create({
   },
   videoContainer: {
     width: SCREEN_WIDTH,
-    height: SCREEN_WIDTH * 9 / 16,
+    height: (SCREEN_WIDTH * 9) / 16,
     backgroundColor: "#000000",
     justifyContent: "center",
     alignItems: "center",
@@ -890,7 +1030,7 @@ const styles = StyleSheet.create({
   },
   errorContainer: {
     width: SCREEN_WIDTH,
-    height: SCREEN_WIDTH * 9 / 16,
+    height: (SCREEN_WIDTH * 9) / 16,
     justifyContent: "center",
     alignItems: "center",
   },
