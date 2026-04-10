@@ -108,7 +108,8 @@ export function ContentCard({ item, onPress, size = "medium", cardWidth: propCar
               style={[styles.image, { borderRadius: BorderRadius.xs }]}
               contentFit={item.type === "audio" ? "contain" : "cover"}
               transition={300}
-              priority="low"
+              priority="normal"
+              recyclingKey={item.id}
               onLoad={handleImageLoad}
               onError={handleImageError}
               cachePolicy="memory-disk"
