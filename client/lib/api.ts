@@ -23,7 +23,7 @@ export interface SubscriptionStatus {
 export interface VideoCategory {
   id: string;
   name: string;
-  parentId?: string | null;
+  parentCategoryId?: string | null;
 }
 
 export interface VideoItem {
@@ -127,7 +127,7 @@ export interface CategorySection {
   name: string;
   type: ContentType;
   items: ContentItem[];
-  parentId?: string | null;
+  parentCategoryId?: string | null;
 }
 
 async function getAuthToken(): Promise<string | null> {
@@ -421,35 +421,49 @@ export async function getContentByCategories(): Promise<CategorySection[]> {
     contentByCategory.get(catId)!.push(item);
   });
 
-  // Iterate over categories in API order (sorted by sortOrder)
-  videoCategories.forEach((category) => {
-    const categoryItems = contentByCategory.get(category.id);
-    if (categoryItems && categoryItems.length > 0) {
-      sections.push({
-        id: `content-${category.id}`,
-        name: category.name,
-        type: "video",
-        parentId: category.parentId,
-        items: categoryItems.map((item) => {
-          const isAudio = item.mediaType === "audio";
-          const thumb = getVideoThumbnailUrl(item);
-          const viewedLocally = locallyViewed.has(item.id);
-          return {
-            id: item.id,
-            title: item.title,
-            description: item.description,
-            type: isAudio ? "audio" as ContentType : "video" as ContentType,
-            thumbnailUrl: thumb.url,
-            thumbnailRequiresAuth: thumb.requiresAuth,
-            duration: item.duration,
-            categoryId: item.categoryId,
-            categoryName: category.name,
-            createdAt: item.createdAt,
-            isNew: isVideoNew(item, viewedLocally),
-          };
-        }),
-      });
+  // Build a set of category IDs that have content either directly or via subcategories
+  const categoryIdsWithContent = new Set<string>();
+  allContent.forEach((item) => {
+    if (item.categoryId) categoryIdsWithContent.add(item.categoryId);
+  });
+  // Also mark parent categories as having content if any of their children do
+  videoCategories.forEach((cat) => {
+    if (cat.parentCategoryId && categoryIdsWithContent.has(cat.id)) {
+      categoryIdsWithContent.add(cat.parentCategoryId);
     }
+  });
+
+  // Iterate over categories in API order — include ALL categories that have content
+  // (directly or via subcategories), so parent-only categories still appear as chips
+  videoCategories.forEach((category) => {
+    const hasContent = categoryIdsWithContent.has(category.id);
+    if (!hasContent) return;
+
+    const categoryItems = contentByCategory.get(category.id) || [];
+    sections.push({
+      id: `content-${category.id}`,
+      name: category.name,
+      type: "video",
+      parentCategoryId: category.parentCategoryId,
+      items: categoryItems.map((item) => {
+        const isAudio = item.mediaType === "audio";
+        const thumb = getVideoThumbnailUrl(item);
+        const viewedLocally = locallyViewed.has(item.id);
+        return {
+          id: item.id,
+          title: item.title,
+          description: item.description,
+          type: isAudio ? "audio" as ContentType : "video" as ContentType,
+          thumbnailUrl: thumb.url,
+          thumbnailRequiresAuth: thumb.requiresAuth,
+          duration: item.duration,
+          categoryId: item.categoryId,
+          categoryName: category.name,
+          createdAt: item.createdAt,
+          isNew: isVideoNew(item, viewedLocally),
+        };
+      }),
+    });
   });
 
   // Add uncategorized items at the end if any

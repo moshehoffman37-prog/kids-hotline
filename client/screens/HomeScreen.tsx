@@ -103,18 +103,18 @@ export default function HomeScreen() {
     return map;
   }, [sections]);
 
-  // Sections that have no parentId are top-level (primary) categories
+  // Sections that have no parentCategoryId are top-level (primary) categories
   const primaryCategories = useMemo(() => {
     if (!sections) return [];
-    return sections.filter((s) => !s.parentId);
+    return sections.filter((s) => !s.parentCategoryId);
   }, [sections]);
 
-  // Sub-categories of the selected primary: sections whose parentId matches
-  // the raw category id (section id is `content-<rawId>`, parentId is `<rawId>`)
+  // Sub-categories of the selected primary: sections whose parentCategoryId matches
+  // the raw category id (section id is `content-<rawId>`, parentCategoryId is `<rawId>`)
   const subCategories = useMemo(() => {
     if (!sections || !selectedPrimaryCategory) return [];
     const rawId = selectedPrimaryCategory.replace(/^content-/, "");
-    return sections.filter((s) => s.parentId === rawId);
+    return sections.filter((s) => s.parentCategoryId === rawId);
   }, [sections, selectedPrimaryCategory]);
 
   // Items to display in the grid
@@ -131,7 +131,7 @@ export default function HomeScreen() {
       const primaryItems = primarySection ? primarySection.items : [];
       const rawId = selectedPrimaryCategory.replace(/^content-/, "");
       const subItems = sections
-        .filter((s) => s.parentId === rawId)
+        .filter((s) => s.parentCategoryId === rawId)
         .flatMap((s) => s.items);
       return [...primaryItems, ...subItems];
     }
