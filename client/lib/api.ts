@@ -23,6 +23,7 @@ export interface SubscriptionStatus {
 export interface VideoCategory {
   id: string;
   name: string;
+  parentId?: string | null;
 }
 
 export interface VideoItem {
@@ -126,6 +127,7 @@ export interface CategorySection {
   name: string;
   type: ContentType;
   items: ContentItem[];
+  parentId?: string | null;
 }
 
 async function getAuthToken(): Promise<string | null> {
@@ -427,6 +429,7 @@ export async function getContentByCategories(): Promise<CategorySection[]> {
         id: `content-${category.id}`,
         name: category.name,
         type: "video",
+        parentId: category.parentId,
         items: categoryItems.map((item) => {
           const isAudio = item.mediaType === "audio";
           const thumb = getVideoThumbnailUrl(item);

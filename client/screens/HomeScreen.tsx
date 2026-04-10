@@ -31,7 +31,8 @@ export default function HomeScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedPrimaryCategory, setSelectedPrimaryCategory] = useState<string | null>(null);
+  const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>(null);
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showTrending, setShowTrending] = useState(true);
@@ -90,11 +91,6 @@ export default function HomeScreen() {
       .slice(0, 10);
   }, [allItems]);
 
-  const categories = useMemo(() => {
-    if (!sections) return [];
-    return sections.map((s) => ({ id: s.id, name: s.name }));
-  }, [sections]);
-
   const categoryMap = useMemo(() => {
     const map: Record<string, string> = {};
     if (sections) {
@@ -106,6 +102,41 @@ export default function HomeScreen() {
     }
     return map;
   }, [sections]);
+
+  // Sections that have no parentId are top-level (primary) categories
+  const primaryCategories = useMemo(() => {
+    if (!sections) return [];
+    return sections.filter((s) => !s.parentId);
+  }, [sections]);
+
+  // Sub-categories of the selected primary: sections whose parentId matches
+  // the raw category id (section id is `content-<rawId>`, parentId is `<rawId>`)
+  const subCategories = useMemo(() => {
+    if (!sections || !selectedPrimaryCategory) return [];
+    const rawId = selectedPrimaryCategory.replace(/^content-/, "");
+    return sections.filter((s) => s.parentId === rawId);
+  }, [sections, selectedPrimaryCategory]);
+
+  // Items to display in the grid
+  const filteredItems = useMemo(() => {
+    if (!sections) return [];
+    // Subcategory selected → show only that subcategory's items
+    if (selectedSubCategory) {
+      const section = sections.find((s) => s.id === selectedSubCategory);
+      return section ? section.items : [];
+    }
+    // Primary selected → aggregate items from primary section + all its sub-sections
+    if (selectedPrimaryCategory) {
+      const primarySection = sections.find((s) => s.id === selectedPrimaryCategory);
+      const primaryItems = primarySection ? primarySection.items : [];
+      const rawId = selectedPrimaryCategory.replace(/^content-/, "");
+      const subItems = sections
+        .filter((s) => s.parentId === rawId)
+        .flatMap((s) => s.items);
+      return [...primaryItems, ...subItems];
+    }
+    return [];
+  }, [selectedPrimaryCategory, selectedSubCategory, sections]);
 
   const trendingItems = useMemo(() => {
     if (!allItems.length) return [];
@@ -134,12 +165,6 @@ export default function HomeScreen() {
     return allItems.filter((item) => fuzzySearch(searchQuery, item.title));
   }, [searchQuery, allItems]);
 
-  const filteredItems = useMemo(() => {
-    if (!selectedCategory || !sections) return [];
-    const section = sections.find((s) => s.id === selectedCategory);
-    return section ? section.items : [];
-  }, [selectedCategory, sections]);
-
   const handleContentPress = useCallback(
     (item: api.ContentItem) => {
       if (item.type === "album") {
@@ -151,9 +176,21 @@ export default function HomeScreen() {
     [navigation]
   );
 
-  const handleCategoryPress = (categoryId: string) => {
+  const handlePrimaryCategoryPress = (sectionId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setSelectedCategory(categoryId === selectedCategory ? null : categoryId);
+    if (sectionId === selectedPrimaryCategory) {
+      // Deselect
+      setSelectedPrimaryCategory(null);
+      setSelectedSubCategory(null);
+    } else {
+      setSelectedPrimaryCategory(sectionId);
+      setSelectedSubCategory(null);
+    }
+  };
+
+  const handleSubCategoryPress = (sectionId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSelectedSubCategory(sectionId === selectedSubCategory ? null : sectionId);
   };
 
   const handleToggleTrending = () => {
@@ -434,12 +471,12 @@ export default function HomeScreen() {
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.categoryChips}
                 >
-                  {categories.map((category) => {
-                    const isSelected = category.id === selectedCategory;
+                  {primaryCategories.map((category) => {
+                    const isSelected = category.id === selectedPrimaryCategory;
                     return (
                       <Pressable
                         key={category.id}
-                        onPress={() => handleCategoryPress(category.id)}
+                        onPress={() => handlePrimaryCategoryPress(category.id)}
                         style={[
                           styles.categoryChip,
                           {
@@ -460,9 +497,44 @@ export default function HomeScreen() {
                     );
                   })}
                 </ScrollView>
+
+                {subCategories.length > 0 ? (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={[styles.categoryChips, styles.subCategoryChips]}
+                  >
+                    {subCategories.map((sub) => {
+                      const isSelected = sub.id === selectedSubCategory;
+                      return (
+                        <Pressable
+                          key={sub.id}
+                          onPress={() => handleSubCategoryPress(sub.id)}
+                          style={[
+                            styles.categoryChip,
+                            styles.subCategoryChip,
+                            {
+                              backgroundColor: isSelected ? theme.accent : "transparent",
+                              borderColor: isSelected ? theme.accent : theme.accent,
+                            },
+                          ]}
+                        >
+                          <ThemedText
+                            style={[
+                              styles.categoryChipText,
+                              { color: isSelected ? theme.buttonText : theme.accent, fontSize: 13 },
+                            ]}
+                          >
+                            {sub.name}
+                          </ThemedText>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+                ) : null}
               </View>
 
-              {selectedCategory ? (
+              {selectedPrimaryCategory ? (
                 <View style={styles.filteredContent}>
                   <View style={styles.contentGrid}>
                     {filteredItems.map((item) => (
@@ -573,6 +645,14 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.full,
     borderWidth: 1,
     marginRight: Spacing.sm,
+  },
+  subCategoryChips: {
+    marginTop: Spacing.sm,
+  },
+  subCategoryChip: {
+    paddingVertical: 5,
+    paddingHorizontal: Spacing.md,
+    borderWidth: 1.5,
   },
   categoryChipText: {
     fontSize: 14,
